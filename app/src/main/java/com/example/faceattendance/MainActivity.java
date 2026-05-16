@@ -1,5 +1,10 @@
 package com.example.faceattendance;
 
+import com.example.faceattendance.database.AppDatabase;
+import com.example.faceattendance.database.Attendance;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -52,10 +57,24 @@ public class MainActivity extends AppCompatActivity {
         btnAttend.setOnClickListener(v -> {
             if (faceCount == 0) {
                 Toast.makeText(this, "Không phát hiện khuôn mặt!", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, "Điểm danh thành công!", Toast.LENGTH_SHORT).show();
-                // TODO: Vinh kết nối DB sau
+                return;
             }
+            AppDatabase db = AppDatabase.getInstance(this);
+            Attendance a   = new Attendance();
+            a.studentName  = "Chưa xác định";
+            a.studentCode  = "N/A";
+            a.timestamp    = System.currentTimeMillis();
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
+            SimpleDateFormat stf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+            a.date = sdf.format(new Date());
+            a.time = stf.format(new Date());
+            new Thread(() -> {
+                db.attendanceDao().insert(a);
+                runOnUiThread(() ->
+                        Toast.makeText(this, "✅ Điểm danh lúc " + a.time,
+                                Toast.LENGTH_SHORT).show()
+                );
+            }).start();
         });
 
         btnRegister.setOnClickListener(v ->
