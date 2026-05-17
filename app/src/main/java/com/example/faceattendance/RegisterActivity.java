@@ -38,6 +38,12 @@ import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 
+import android.graphics.Matrix;
+import android.net.Uri;
+
+
+
+
 public class RegisterActivity extends AppCompatActivity {
 
     private static final String TAG = "RegisterActivity";
@@ -173,7 +179,7 @@ public class RegisterActivity extends AppCompatActivity {
 
                 provider.bindToLifecycle(
                         this,
-                        CameraSelector.DEFAULT_BACK_CAMERA,
+                        CameraSelector.DEFAULT_FRONT_CAMERA,
                         preview,
                         imageCapture
                 );
@@ -189,125 +195,135 @@ public class RegisterActivity extends AppCompatActivity {
     // ================= TAKE PHOTO =================
 
     private void takePhoto() {
-
         if (imageCapture == null) return;
-
         tvCameraStatus.setText("Đang chụp...");
-
         btnCapture.setEnabled(false);
 
-        imageCapture.takePicture(
-                ContextCompat.getMainExecutor(this),
+        // Tạo file output
+        File dir = new File(getFilesDir(), "faces");
+        if (!dir.exists()) dir.mkdirs();
+        File photoFile = new File(dir, "sv_" + System.currentTimeMillis() + ".jpg");
 
-                new ImageCapture.OnImageCapturedCallback() {
+        ImageCapture.OutputFileOptions options =
+                new ImageCapture.OutputFileOptions.Builder(photoFile).build();
+
+        // Lưu thẳng ra file JPEG — tránh hoàn toàn vấn đề YUV buffer
+        imageCapture.takePicture(
+                options,
+                ContextCompat.getMainExecutor(this),
+                new ImageCapture.OnImageSavedCallback() {
 
                     @Override
-                    @androidx.camera.core.ExperimentalGetImage
-                    public void onCaptureSuccess(
-                            @NonNull ImageProxy proxy
-                    ) {
-
-                        detectFaceAndSave(proxy);
+                    public void onImageSaved(@NonNull ImageCapture.OutputFileResults output) {
+                        detectFaceFromFile(photoFile);
                     }
 
                     @Override
-                    public void onError(
-                            @NonNull ImageCaptureException exception
-                    ) {
-
-                        tvCameraStatus.setText("Lỗi camera");
-
+                    public void onError(@NonNull ImageCaptureException e) {
+                        tvCameraStatus.setText("Lỗi camera: " + e.getMessage());
                         btnCapture.setEnabled(true);
                     }
                 }
         );
     }
 
+    // ================= ML KIT TỪ FILE =================
+    private void detectFaceFromFile(File photoFile) {
+        // Load bitmap từ file JPEG — luôn đúng, không phụ thuộc format emulator
+        Bitmap bmp = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
+
+        if (bmp == null) {
+            tvCameraStatus.setText("Không đọc được ảnh");
+            btnCapture.setEnabled(true);
+            return;
+        }
+
+        // Tạo InputImage từ file
+        InputImage image;
+        try {
+            image = InputImage.fromFilePath(this,
+                    android.net.Uri.fromFile(photoFile));
+        } catch (Exception e) {
+            tvCameraStatus.setText("Lỗi xử lý ảnh");
+            btnCapture.setEnabled(true);
+            return;
+        }
+
+        FaceDetectorOptions opts = new FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                .setMinFaceSize(0.2f)
+                .build();
+
+        FaceDetection.getClient(opts).process(image)
+                .addOnSuccessListener(faces -> {
+                    if (faces.isEmpty()) {
+                        tvCameraStatus.setText("Không phát hiện khuôn mặt, thử lại");
+                        photoFile.delete(); // xóa ảnh không hợp lệ
+                        btnCapture.setEnabled(true);
+                        return;
+                    }
+
+                    // Thành công
+                    savedPhotoPath = photoFile.getAbsolutePath();
+                    imgCaptured.setImageBitmap(bmp);
+                    imgCaptured.setVisibility(ImageView.VISIBLE);
+                    tvCameraStatus.setText("✓ Đã nhận diện khuôn mặt");
+                    btnCapture.setText("📸 Chụp lại");
+                    btnCapture.setEnabled(true);
+                    Toast.makeText(this, "Khuôn mặt OK!", Toast.LENGTH_SHORT).show();
+                })
+                .addOnFailureListener(e -> {
+                    tvCameraStatus.setText("Lỗi ML Kit: " + e.getMessage());
+                    btnCapture.setEnabled(true);
+                });
+    }
+
     // ================= ML KIT =================
 
     @androidx.camera.core.ExperimentalGetImage
     private void detectFaceAndSave(ImageProxy proxy) {
+        if (proxy.getImage() == null) { proxy.close(); return; }
 
-        if (proxy.getImage() == null) {
+        // ✅ Lấy bitmap TRƯỚC — trước khi ML Kit đọc buffer
+        Bitmap bmp = proxyToBitmap(proxy);
 
-            proxy.close();
-            return;
-        }
+        InputImage image = InputImage.fromMediaImage(
+                proxy.getImage(),
+                proxy.getImageInfo().getRotationDegrees()
+        );
 
-        InputImage image =
-                InputImage.fromMediaImage(
-                        proxy.getImage(),
-                        proxy.getImageInfo().getRotationDegrees()
-                );
+        FaceDetectorOptions options = new FaceDetectorOptions.Builder()
+                .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+                .setMinFaceSize(0.2f)
+                .build();
 
-        FaceDetectorOptions options =
-                new FaceDetectorOptions.Builder()
-                        .setPerformanceMode(
-                                FaceDetectorOptions.PERFORMANCE_MODE_FAST
-                        )
-                        .setMinFaceSize(0.2f)
-                        .build();
-
-        FaceDetector detector =
-                FaceDetection.getClient(options);
-
+        FaceDetector detector = FaceDetection.getClient(options);
         detector.process(image)
-
                 .addOnSuccessListener(faces -> {
-
-                    Bitmap bmp = proxyToBitmap(proxy);
-
-                    proxy.close();
+                    proxy.close(); // đóng sau cùng
 
                     if (bmp == null) {
-
-                        tvCameraStatus.setText(
-                                "Không đọc được ảnh"
-                        );
-
+                        tvCameraStatus.setText("Không đọc được ảnh");
                         btnCapture.setEnabled(true);
-
                         return;
                     }
-
                     if (faces.isEmpty()) {
-
-                        tvCameraStatus.setText(
-                                "Không phát hiện khuôn mặt"
-                        );
-
+                        tvCameraStatus.setText("Không phát hiện khuôn mặt, thử lại");
                         btnCapture.setEnabled(true);
-
                         return;
                     }
 
                     savedPhotoPath = savePhoto(bmp);
-
                     imgCaptured.setImageBitmap(bmp);
-
                     imgCaptured.setVisibility(ImageView.VISIBLE);
-
-                    tvCameraStatus.setText(
-                            "✓ Đã nhận diện khuôn mặt"
-                    );
-
+                    tvCameraStatus.setText("✓ Đã nhận diện khuôn mặt");
                     btnCapture.setText("📸 Chụp lại");
-
                     btnCapture.setEnabled(true);
-
-                    Toast.makeText(
-                            this,
-                            "Khuôn mặt OK!",
-                            Toast.LENGTH_SHORT
-                    ).show();
+                    Toast.makeText(this, "Khuôn mặt OK!", Toast.LENGTH_SHORT).show();
                 })
-
                 .addOnFailureListener(e -> {
-
                     proxy.close();
-
                     tvCameraStatus.setText("Lỗi ML Kit");
-
                     btnCapture.setEnabled(true);
                 });
     }
@@ -315,28 +331,55 @@ public class RegisterActivity extends AppCompatActivity {
     // ================= BITMAP =================
 
     private Bitmap proxyToBitmap(ImageProxy proxy) {
-
         try {
+            ImageProxy.PlaneProxy[] planes = proxy.getPlanes();
+            int width  = proxy.getWidth();
+            int height = proxy.getHeight();
 
-            ByteBuffer buffer =
-                    proxy.getPlanes()[0]
-                            .getBuffer();
+            ByteBuffer yBuffer = planes[0].getBuffer();
+            ByteBuffer uBuffer = planes[1].getBuffer();
+            ByteBuffer vBuffer = planes[2].getBuffer();
 
-            byte[] bytes =
-                    new byte[buffer.remaining()];
+            int yRowStride    = planes[0].getRowStride();
+            int uvRowStride   = planes[1].getRowStride();
+            int uvPixelStride = planes[1].getPixelStride();
 
-            buffer.get(bytes);
+            // Convert YUV_420_888 → ARGB (đúng với mọi stride, mọi thiết bị/emulator)
+            int[] argb = new int[width * height];
+            int idx = 0;
 
-            return BitmapFactory.decodeByteArray(
-                    bytes,
-                    0,
-                    bytes.length
-            );
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    int yVal = yBuffer.get(y * yRowStride + x) & 0xFF;
+
+                    int uvRow = (y / 2) * uvRowStride;
+                    int uvCol = (x / 2) * uvPixelStride;
+                    int uVal  = uBuffer.get(uvRow + uvCol) & 0xFF;
+                    int vVal  = vBuffer.get(uvRow + uvCol) & 0xFF;
+
+                    int r = (int)(yVal + 1.402f   * (vVal - 128));
+                    int g = (int)(yVal - 0.344136f * (uVal - 128) - 0.714136f * (vVal - 128));
+                    int b = (int)(yVal + 1.772f    * (uVal - 128));
+
+                    r = Math.max(0, Math.min(255, r));
+                    g = Math.max(0, Math.min(255, g));
+                    b = Math.max(0, Math.min(255, b));
+
+                    argb[idx++] = 0xFF000000 | (r << 16) | (g << 8) | b;
+                }
+            }
+
+            Bitmap raw = Bitmap.createBitmap(argb, width, height, Bitmap.Config.ARGB_8888);
+
+            // Xoay + flip cho camera trước
+            Matrix matrix = new Matrix();
+            matrix.postRotate(proxy.getImageInfo().getRotationDegrees());
+            matrix.postScale(-1f, 1f, raw.getWidth() / 2f, raw.getHeight() / 2f);
+
+            return Bitmap.createBitmap(raw, 0, 0, raw.getWidth(), raw.getHeight(), matrix, true);
 
         } catch (Exception e) {
-
-            Log.e(TAG, "Bitmap error", e);
-
+            Log.e(TAG, "Bitmap error: " + e.getMessage(), e);
             return null;
         }
     }

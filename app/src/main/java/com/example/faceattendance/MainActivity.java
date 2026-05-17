@@ -23,6 +23,8 @@ import com.example.faceattendance.camera.FaceOverlayView;
 import com.example.faceattendance.detector.FaceDetectorHelper;
 import com.google.common.util.concurrent.ListenableFuture;
 import java.util.concurrent.ExecutionException;
+import com.example.faceattendance.database.Student;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -60,19 +62,46 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Không phát hiện khuôn mặt!", Toast.LENGTH_SHORT).show();
                 return;
             }
-            AppDatabase db = AppDatabase.getInstance(this);
-            Attendance a   = new Attendance();
-            a.studentName  = "Chưa xác định";
-            a.studentCode  = "N/A";
-            a.timestamp    = System.currentTimeMillis();
-            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-            SimpleDateFormat stf = new SimpleDateFormat("HH:mm", Locale.getDefault());
-            a.date = sdf.format(new Date());
-            a.time = stf.format(new Date());
+
+            // Lấy sinh viên đầu tiên trong DB (Ngày 3 merge với Quân sẽ làm matching thật)
             new Thread(() -> {
+                AppDatabase db = AppDatabase.getInstance(this);
+                List<Student> students = db.studentDao().getAll();
+
+                if (students.isEmpty()) {
+                    runOnUiThread(() ->
+                            Toast.makeText(this, "Chưa có SV đăng ký!", Toast.LENGTH_SHORT).show()
+                    );
+                    return;
+                }
+
+                // TODO Ngày 3: thay bằng face matching thật với Quân
+                Student matched = students.get(0);
+
+                // Kiểm tra đã điểm danh hôm nay chưa
+                String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+                List<Attendance> todayList = db.attendanceDao().getByDate(today);
+                for (Attendance existing : todayList) {
+                    if (existing.studentId == matched.id) {
+                        runOnUiThread(() ->
+                                Toast.makeText(this, matched.name + " đã điểm danh hôm nay!", Toast.LENGTH_SHORT).show()
+                        );
+                        return;
+                    }
+                }
+
+                // Lưu điểm danh
+                Attendance a = new Attendance();
+                a.studentId   = matched.id;
+                a.studentName = matched.name;
+                a.studentCode = matched.studentCode;
+                a.timestamp   = System.currentTimeMillis();
+                a.date        = today;
+                a.time        = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
                 db.attendanceDao().insert(a);
+
                 runOnUiThread(() ->
-                        Toast.makeText(this, "✅ Điểm danh lúc " + a.time,
+                        Toast.makeText(this, "✅ Điểm danh: " + matched.name + " lúc " + a.time,
                                 Toast.LENGTH_SHORT).show()
                 );
             }).start();
