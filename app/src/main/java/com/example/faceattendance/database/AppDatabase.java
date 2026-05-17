@@ -6,8 +6,8 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
 @Database(
-        entities = {Student.class, Attendance.class},
-        version = 1,
+        entities = {Student.class, Attendance.class, Teacher.class, ClassRoomEntity.class},
+        version = 3,           // ← tăng version vì thêm bảng ClassRoom
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -16,6 +16,8 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract StudentDao studentDao();
     public abstract AttendanceDao attendanceDao();
+    public abstract TeacherDao teacherDao();
+    public abstract ClassRoomDao classRoomDao();
 
     public static AppDatabase getInstance(Context context) {
         if (instance == null) {

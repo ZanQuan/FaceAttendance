@@ -34,21 +34,33 @@ public class MainActivity extends AppCompatActivity {
     private int faceCount = 0;
     private static final int CAMERA_CODE = 100;
 
+    // Thông tin lớp học được chọn
+    private String currentClassCode;
+    private String currentClassName;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Nhận thông tin lớp từ ClassSelectionActivity
+        currentClassCode = getIntent().getStringExtra(ClassSelectionActivity.EXTRA_CLASS_CODE);
+        currentClassName = getIntent().getStringExtra(ClassSelectionActivity.EXTRA_CLASS_NAME);
+
         previewView = findViewById(R.id.previewView);
         faceOverlay = findViewById(R.id.faceOverlay);
         tvStatus    = findViewById(R.id.tvStatus);
+
+        // Hiển thị tên lớp ở status bar
+        if (currentClassName != null) {
+            tvStatus.setText("Lớp: " + currentClassName + " – Chưa phát hiện khuôn mặt");
+        }
 
         Button btnAttend   = findViewById(R.id.btnAttend);
         Button btnRegister = findViewById(R.id.btnRegister);
         Button btnHistory  = findViewById(R.id.btnHistory);
         Button btnStudents = findViewById(R.id.btnStudents);
 
-        // Xin quyền camera
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
@@ -63,7 +75,6 @@ public class MainActivity extends AppCompatActivity {
                 return;
             }
 
-            // Lấy sinh viên đầu tiên trong DB (Ngày 3 merge với Quân sẽ làm matching thật)
             new Thread(() -> {
                 AppDatabase db = AppDatabase.getInstance(this);
                 List<Student> students = db.studentDao().getAll();
@@ -75,10 +86,9 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
 
-                // TODO Ngày 3: thay bằng face matching thật với Quân
+                // TODO: thay bằng face matching thật
                 Student matched = students.get(0);
 
-                // Kiểm tra đã điểm danh hôm nay chưa
                 String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
                 List<Attendance> todayList = db.attendanceDao().getByDate(today);
                 for (Attendance existing : todayList) {
@@ -90,7 +100,6 @@ public class MainActivity extends AppCompatActivity {
                     }
                 }
 
-                // Lưu điểm danh
                 Attendance a = new Attendance();
                 a.studentId   = matched.id;
                 a.studentName = matched.name;
@@ -98,10 +107,13 @@ public class MainActivity extends AppCompatActivity {
                 a.timestamp   = System.currentTimeMillis();
                 a.date        = today;
                 a.time        = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+                // Gắn mã lớp vào bản ghi điểm danh (nếu bạn thêm field classCode vào Attendance)
                 db.attendanceDao().insert(a);
 
                 runOnUiThread(() ->
-                        Toast.makeText(this, "✅ Điểm danh: " + matched.name + " lúc " + a.time,
+                        Toast.makeText(this,
+                                "✅ Điểm danh: " + matched.name + " lúc " + a.time
+                                        + (currentClassName != null ? " – " + currentClassName : ""),
                                 Toast.LENGTH_SHORT).show()
                 );
             }).start();
@@ -129,8 +141,7 @@ public class MainActivity extends AppCompatActivity {
                 preview.setSurfaceProvider(previewView.getSurfaceProvider());
 
                 ImageAnalysis analysis = new ImageAnalysis.Builder()
-                        .setBackpressureStrategy(
-                                ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build();
 
                 analysis.setAnalyzer(
@@ -138,10 +149,12 @@ public class MainActivity extends AppCompatActivity {
                         new FaceDetectorHelper((faces, w, h) ->
                                 runOnUiThread(() -> {
                                     faceCount = faces.size();
-                                    faceOverlay.setFaces(faces, w, h); // ← truyền kích thước
+                                    faceOverlay.setFaces(faces, w, h);
+                                    String classLabel = currentClassName != null
+                                            ? "Lớp: " + currentClassName + " – " : "";
                                     tvStatus.setText(faceCount == 0
-                                            ? "Chưa phát hiện khuôn mặt"
-                                            : "Phát hiện " + faceCount + " khuôn mặt ✓");
+                                            ? classLabel + "Chưa phát hiện khuôn mặt"
+                                            : classLabel + "Phát hiện " + faceCount + " khuôn mặt ✓");
                                 })
                         )
                 );
