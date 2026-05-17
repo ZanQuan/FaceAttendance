@@ -15,17 +15,22 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FaceAttendance">
 
+        <!-- ① LoginActivity là màn hình đầu tiên khi mở app -->
         <activity
-            android:name=".MainActivity"
-            android:exported="true">
-
+            android:name=".LoginActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
-
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
         </activity>
+
+        <!-- ② Chọn lớp học -->
+        <activity android:name=".ClassSelectionActivity"/>
+
+        <!-- ③ Màn hình điểm danh chính (không còn là launcher) -->
+        <activity android:name=".MainActivity"/>
 
         <activity android:name=".HistoryActivity"/>
         <activity android:name=".StudentListActivity"/>

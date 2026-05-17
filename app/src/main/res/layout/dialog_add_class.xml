@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Tên lớp *"
+        android:textSize="13sp"
+        android:textColor="#5C6BC0"
+        android:layout_marginBottom="4dp"/>
+
+    <EditText
+        android:id="@+id/etClassName"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="VD: CNTT K21"
+        android:inputType="text"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/bg_input_field"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Mã lớp *"
+        android:textSize="13sp"
+        android:textColor="#5C6BC0"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"/>
+
+    <EditText
+        android:id="@+id/etClassCode"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="VD: CNTT01"
+        android:inputType="text"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/bg_input_field"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Phòng học *"
+        android:textSize="13sp"
+        android:textColor="#5C6BC0"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"/>
+
+    <EditText
+        android:id="@+id/etClassRoom"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="VD: H22"
+        android:inputType="text"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/bg_input_field"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Thời gian học"
+        android:textSize="13sp"
+        android:textColor="#5C6BC0"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"/>
+
+    <EditText
+        android:id="@+id/etClassTime"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="VD: Thứ 2  7:00–9:00"
+        android:inputType="text"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/bg_input_field"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Sĩ số"
+        android:textSize="13sp"
+        android:textColor="#5C6BC0"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"/>
+
+    <EditText
+        android:id="@+id/etClassTotal"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:hint="VD: 40"
+        android:inputType="number"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="@drawable/bg_input_field"/>
+
+</LinearLayout>
