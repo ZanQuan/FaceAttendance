@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnAttend   = findViewById(R.id.btnAttend);
         Button btnRegister = findViewById(R.id.btnRegister);
         Button btnHistory  = findViewById(R.id.btnHistory);
+        Button btnStudents = findViewById(R.id.btnStudents);
 
         // Xin quyền camera
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
@@ -82,6 +83,9 @@ public class MainActivity extends AppCompatActivity {
 
         btnHistory.setOnClickListener(v ->
                 startActivity(new Intent(this, HistoryActivity.class)));
+
+        btnStudents.setOnClickListener(v ->
+                startActivity(new Intent(this, StudentListActivity.class)));
     }
 
     private void startCamera() {
@@ -102,13 +106,15 @@ public class MainActivity extends AppCompatActivity {
 
                 analysis.setAnalyzer(
                         ContextCompat.getMainExecutor(this),
-                        new FaceDetectorHelper(faces -> runOnUiThread(() -> {
-                            faceCount = faces.size();
-                            faceOverlay.setFaces(faces);
-                            tvStatus.setText(faceCount == 0
-                                    ? "Chưa phát hiện khuôn mặt"
-                                    : "Phát hiện " + faceCount + " khuôn mặt ✓");
-                        }))
+                        new FaceDetectorHelper((faces, w, h) ->
+                                runOnUiThread(() -> {
+                                    faceCount = faces.size();
+                                    faceOverlay.setFaces(faces, w, h); // ← truyền kích thước
+                                    tvStatus.setText(faceCount == 0
+                                            ? "Chưa phát hiện khuôn mặt"
+                                            : "Phát hiện " + faceCount + " khuôn mặt ✓");
+                                })
+                        )
                 );
 
                 provider.bindToLifecycle(this,

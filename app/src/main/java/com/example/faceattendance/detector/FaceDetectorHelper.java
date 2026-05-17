@@ -10,7 +10,7 @@ import java.util.List;
 public class FaceDetectorHelper implements ImageAnalysis.Analyzer {
 
     public interface FaceCallback {
-        void onFacesDetected(List<Face> faces);
+        void onFacesDetected(List<Face> faces, int w, int h);
     }
 
     private final FaceDetector detector;
@@ -34,7 +34,11 @@ public class FaceDetectorHelper implements ImageAnalysis.Analyzer {
                 imageProxy.getImageInfo().getRotationDegrees()
         );
         detector.process(image)
-                .addOnSuccessListener(faces -> callback.onFacesDetected(faces))
+                .addOnSuccessListener(faces -> {
+                    int w = imageProxy.getWidth();
+                    int h = imageProxy.getHeight();
+                    callback.onFacesDetected(faces, w, h);
+                })
                 .addOnFailureListener(Throwable::printStackTrace)
                 .addOnCompleteListener(t -> imageProxy.close());
     }
