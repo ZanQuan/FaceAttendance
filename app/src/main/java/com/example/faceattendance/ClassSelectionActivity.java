@@ -168,6 +168,7 @@ public class ClassSelectionActivity extends AppCompatActivity {
                 Intent intent = new Intent(ClassSelectionActivity.this, MainActivity.class);
                 intent.putExtra(EXTRA_CLASS_CODE, cls.code);
                 intent.putExtra(EXTRA_CLASS_NAME, cls.name);
+                intent.putExtra("classId", cls.id);
                 startActivity(intent);
             });
 
@@ -178,9 +179,22 @@ public class ClassSelectionActivity extends AppCompatActivity {
                         .setMessage("Xóa lớp \"" + cls.name + "\"?")
                         .setPositiveButton("Xóa", (d, w) -> {
                             new Thread(() -> {
-                                AppDatabase.getInstance(ClassSelectionActivity.this)
-                                        .classRoomDao().delete(cls);
-                                runOnUiThread(() -> loadClasses());
+                                AppDatabase db = AppDatabase.getInstance(ClassSelectionActivity.this);
+
+                                // Xóa sinh viên thuộc lớp này
+                                db.studentDao().deleteByClassId(cls.id);
+
+                                // Xóa lịch sử điểm danh của lớp
+                                db.attendanceDao().deleteByClassId(cls.id);
+
+                                // Xóa lớp
+                                db.classRoomDao().delete(cls);
+
+                                runOnUiThread(() -> {
+                                    // reload danh sách
+                                    loadClasses();
+                                    Toast.makeText(ClassSelectionActivity.this, "Đã xóa lớp và dữ liệu liên quan", Toast.LENGTH_SHORT).show();
+                                });
                             }).start();
                         })
                         .setNegativeButton("Hủy", null)

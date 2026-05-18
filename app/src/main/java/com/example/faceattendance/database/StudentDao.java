@@ -30,4 +30,10 @@ public interface StudentDao {
 
     @Query("SELECT COUNT(*) FROM students")
     int getCount();
+
+    @Query("SELECT * FROM students WHERE classId = :classId ORDER BY name ASC")
+    List<Student> getByClassId(int classId);
+
+    @Query("DELETE FROM students WHERE classId = :classId")
+    void deleteByClassId(int classId);
 }

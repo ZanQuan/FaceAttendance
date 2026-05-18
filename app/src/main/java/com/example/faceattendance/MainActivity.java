@@ -47,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private int     faceCount = 0;
     private String  currentClassCode;
     private String  currentClassName;
+    private int     currentClassId = 0;
     private boolean isProcessing = false; // chống double-tap
 
     // ─────────────────────────────────────────────
@@ -60,6 +61,7 @@ public class MainActivity extends AppCompatActivity {
 
         currentClassCode = getIntent().getStringExtra(ClassSelectionActivity.EXTRA_CLASS_CODE);
         currentClassName = getIntent().getStringExtra(ClassSelectionActivity.EXTRA_CLASS_NAME);
+        currentClassId   = getIntent().getIntExtra("classId", 0);
 
         previewView = findViewById(R.id.previewView);
         faceOverlay = findViewById(R.id.faceOverlay);
@@ -94,12 +96,18 @@ public class MainActivity extends AppCompatActivity {
             captureAndRecognize();
         });
 
-        btnRegister.setOnClickListener(v ->
-                startActivity(new Intent(this, RegisterActivity.class)));
+        btnRegister.setOnClickListener(v -> {
+            Intent intent = new Intent(this, RegisterActivity.class);
+            intent.putExtra("classId", currentClassId);
+            startActivity(intent);
+        });
         btnHistory.setOnClickListener(v ->
                 startActivity(new Intent(this, HistoryActivity.class)));
-        btnStudents.setOnClickListener(v ->
-                startActivity(new Intent(this, StudentListActivity.class)));
+        btnStudents.setOnClickListener(v -> {
+            Intent intent = new Intent(this, StudentListActivity.class);
+            intent.putExtra("classId", currentClassId);  // ← thêm
+            startActivity(intent);
+        });
     }
 
     // ─────────────────────────────────────────────
@@ -244,7 +252,9 @@ public class MainActivity extends AppCompatActivity {
     /** So khớp embedding với tất cả SV trong DB, ghi điểm danh nếu tìm thấy */
     private void matchAndRecord(float[] queryEmbedding) {
         AppDatabase db = AppDatabase.getInstance(this);
-        List<Student> students = db.studentDao().getAll();
+        List<Student> students = currentClassId > 0
+                ? db.studentDao().getByClassId(currentClassId)
+                : db.studentDao().getAll();
 
         if (students.isEmpty()) {
             runOnUiThread(() -> {

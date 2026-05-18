@@ -20,4 +20,5 @@ public class Attendance {
     public String time;
 
     public long timestamp;
+    public int classId;
 }

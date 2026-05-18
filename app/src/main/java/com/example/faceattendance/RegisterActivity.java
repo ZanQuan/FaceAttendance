@@ -45,17 +45,19 @@ public class RegisterActivity extends AppCompatActivity {
 
     private String  savedPhotoPath = null;
     private float[] savedEmbedding = null;
+    private int     classId        = 0;
 
     // ─────────────────────────────────────────────
     // Lifecycle
     // ─────────────────────────────────────────────
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
         bindViews();
-
+        classId = getIntent().getIntExtra("classId", 0);
         btnCapture.setOnClickListener(v -> takePhoto());
         btnRegister.setOnClickListener(v -> { if (validate()) saveStudent(); });
         btnViewList.setOnClickListener(v ->
@@ -235,6 +237,7 @@ public class RegisterActivity extends AppCompatActivity {
             s.studentCode = code;
             s.photoPath   = savedPhotoPath;
             s.createdAt   = System.currentTimeMillis();
+            s.classId = classId;
             s.setFaceEmbedding(savedEmbedding);
 
             db.studentDao().insert(s);

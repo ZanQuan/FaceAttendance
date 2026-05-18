@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
         entities = {Student.class, Attendance.class, ClassRoomEntity.class, Teacher.class},
-        version = 4,
+        version = 5,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {

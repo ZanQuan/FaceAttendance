@@ -26,10 +26,12 @@ public class StudentListActivity extends AppCompatActivity {
         TextView tvCount = findViewById(R.id.tvCount);
 
         rv.setLayoutManager(new LinearLayoutManager(this));
-
+        int classId = getIntent().getIntExtra("classId", 0);
         new Thread(() -> {
-            List<Student> list = AppDatabase.getInstance(this)
-                    .studentDao().getAll();
+            List<Student> list = classId > 0
+                    ? AppDatabase.getInstance(this).studentDao().getByClassId(classId)
+                    : AppDatabase.getInstance(this).studentDao().getAll();
+
             runOnUiThread(() -> {
                 tvCount.setText(list.size() + " SV");
                 rv.setAdapter(new StudentAdapter(list));

@@ -22,4 +22,7 @@ public interface AttendanceDao {
 
     @Query("DELETE FROM attendance")
     void deleteAll();
+
+    @Query("DELETE FROM attendance WHERE classId = :classId")
+    void deleteByClassId(int classId);
 }

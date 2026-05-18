@@ -14,7 +14,7 @@ public class Student {
     public String studentCode;   // MSSV
     public String photoPath;     // Đường dẫn ảnh
     public long   createdAt;     // Thời gian đăng ký
-
+    public int classId;
     /**
      * Face embedding vector (128 chiều) được serialize sang JSON String.
      * Dùng getFaceEmbedding() / setFaceEmbedding() để đọc/ghi.
