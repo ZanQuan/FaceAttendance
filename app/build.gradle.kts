@@ -51,8 +51,11 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax_version")
     implementation("androidx.camera:camera-view:$camerax_version")
 
-    // ML Kit Face Detection
+    // ML Kit Face Detection (đã có — dùng cho cả nhận diện, không cần thêm gì)
     implementation("com.google.mlkit:face-detection:16.1.5")
+
+    // Gson — serialize embedding float[] → JSON String để lưu vào Room
+    implementation("com.google.code.gson:gson:2.10.1")
 
     // Room Database
     val room_version = "2.6.1"
