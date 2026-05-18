@@ -130,46 +130,75 @@ public class RegisterActivity extends AppCompatActivity {
     // ─────────────────────────────────────────────
     // Trích xuất embedding từ ảnh  ← PHẦN QUAN TRỌNG
     // ─────────────────────────────────────────────
-
     private void processPhoto(File photoFile) {
-        Bitmap bmp = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
-        if (bmp == null) {
+        Bitmap original = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
+        if (original == null) {
             tvCameraStatus.setText("Không đọc được ảnh");
             btnCapture.setEnabled(true);
             return;
         }
-
-        tvCameraStatus.setText("Đang phân tích khuôn mặt...");
-
-        // FaceGeometricHelper dùng ML Kit (đã có sẵn) — không cần model ngoài
-        FaceGeometricHelper.extractEmbedding(this, bmp, new FaceGeometricHelper.EmbeddingCallback() {
-
-            @Override
-            public void onSuccess(float[] embedding) {
-                // Chạy trên main thread (ML Kit callback)
-                savedPhotoPath = photoFile.getAbsolutePath();
-                savedEmbedding = embedding;
-
-                imgCaptured.setImageBitmap(bmp);
-                imgCaptured.setVisibility(ImageView.VISIBLE);
-                tvCameraStatus.setText("✓ Đã trích xuất " + embedding.length + " điểm đặc trưng");
-                btnCapture.setText("📸 Chụp lại");
-                btnCapture.setEnabled(true);
-                Toast.makeText(RegisterActivity.this,
-                        "Khuôn mặt OK! Nhấn Đăng ký để lưu.", Toast.LENGTH_SHORT).show();
-
-                Log.d(TAG, "Embedding trích xuất thành công: " + embedding.length + " features");
-            }
-
-            @Override
-            public void onFailure(String reason) {
-                tvCameraStatus.setText(reason + " — thử lại");
-                photoFile.delete();
-                btnCapture.setEnabled(true);
-                Toast.makeText(RegisterActivity.this, reason, Toast.LENGTH_SHORT).show();
-            }
-        });
+        tvCameraStatus.setText("Đang phân tích...");
+        tryDetectWithRotation(original, photoFile, new int[]{0, 90, 270, 180}, 0);
     }
+
+    private void tryDetectWithRotation(Bitmap original, File photoFile,
+                                       int[] angles, int index) {
+        if (index >= angles.length) {
+            runOnUiThread(() -> {
+                tvCameraStatus.setText("Không phát hiện mặt — giữ thẳng & đủ sáng");
+                btnCapture.setEnabled(true);
+            });
+            return;
+        }
+
+        int angle = angles[index];
+        Bitmap rotated;
+        if (angle == 0) {
+            rotated = original;
+        } else {
+            android.graphics.Matrix m = new android.graphics.Matrix();
+            m.postRotate(angle);
+            rotated = Bitmap.createBitmap(original, 0, 0,
+                    original.getWidth(), original.getHeight(), m, true);
+        }
+
+        final Bitmap finalBmp = rotated;
+
+        FaceGeometricHelper.extractEmbedding(this, rotated,
+                new FaceGeometricHelper.EmbeddingCallback() {
+                    @Override
+                    public void onSuccess(float[] embedding) {
+                        try {
+                            java.io.FileOutputStream fos =
+                                    new java.io.FileOutputStream(photoFile);
+                            finalBmp.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+                            fos.close();
+                        } catch (Exception e) {
+                            Log.e(TAG, "save error", e);
+                        }
+                        savedPhotoPath = photoFile.getAbsolutePath();
+                        savedEmbedding = embedding;
+                        runOnUiThread(() -> {
+                            imgCaptured.setImageBitmap(finalBmp);
+                            imgCaptured.setVisibility(ImageView.VISIBLE);
+                            tvCameraStatus.setText("✓ " + embedding.length
+                                    + " điểm đặc trưng (xoay " + angle + "°)");
+                            btnCapture.setText("📸 Chụp lại");
+                            btnCapture.setEnabled(true);
+                            Toast.makeText(RegisterActivity.this,
+                                    "Khuôn mặt OK!", Toast.LENGTH_SHORT).show();
+                            Log.d(TAG, "OK: " + embedding.length + " features, angle=" + angle);
+                        });
+                    }
+
+                    @Override
+                    public void onFailure(String reason) {
+                        // Thử góc tiếp theo
+                        tryDetectWithRotation(original, photoFile, angles, index + 1);
+                    }
+                });
+    }
+
 
     // ─────────────────────────────────────────────
     // Validate & Save

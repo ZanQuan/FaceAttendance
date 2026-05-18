@@ -64,4 +64,5 @@ dependencies {
 
     // RecyclerView
     implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 }

@@ -142,8 +142,19 @@ public class MainActivity extends AppCompatActivity {
                         .build();
 
                 provider.unbindAll();
-                provider.bindToLifecycle(this,
-                        CameraSelector.DEFAULT_FRONT_CAMERA,
+
+                CameraSelector cameraSelector;
+                try {
+                    cameraSelector = provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)
+                            ? CameraSelector.DEFAULT_FRONT_CAMERA
+                            : CameraSelector.DEFAULT_BACK_CAMERA;
+                } catch (Exception e) {
+                    cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA;
+                }
+
+                provider.bindToLifecycle(
+                        this,
+                        cameraSelector,
                         preview, analysis, imageCapture);
 
             } catch (ExecutionException | InterruptedException e) {
@@ -186,29 +197,48 @@ public class MainActivity extends AppCompatActivity {
 
     /** Đọc ảnh → trích đặc trưng → so khớp với DB */
     private void recognizeFromFile(File photoFile) {
-        Bitmap bmp = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
-        photoFile.delete(); // xóa ngay sau khi đọc
-        if (bmp == null) {
+        Bitmap original = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
+        photoFile.delete();
+        if (original == null) {
             tvStatus.setText("Không đọc được frame");
             isProcessing = false;
             return;
         }
+        // Thử 4 góc xoay giống RegisterActivity
+        tryRecognizeWithRotation(original, new int[]{0, 90, 270, 180}, 0);
+    }
 
-        // Dùng FaceGeometricHelper (ML Kit) — không cần model ngoài
-        FaceGeometricHelper.extractEmbedding(this, bmp, new FaceGeometricHelper.EmbeddingCallback() {
+    private void tryRecognizeWithRotation(Bitmap original, int[] angles, int index) {
+        if (index >= angles.length) {
+            tvStatus.setText("Không nhận diện được — đứng thẳng trước camera");
+            isProcessing = false;
+            return;
+        }
 
-            @Override
-            public void onSuccess(float[] queryEmbedding) {
-                // So khớp trong background
-                new Thread(() -> matchAndRecord(queryEmbedding)).start();
-            }
+        int angle = angles[index];
+        Bitmap rotated;
+        if (angle == 0) {
+            rotated = original;
+        } else {
+            android.graphics.Matrix m = new android.graphics.Matrix();
+            m.postRotate(angle);
+            rotated = Bitmap.createBitmap(original, 0, 0,
+                    original.getWidth(), original.getHeight(), m, true);
+        }
 
-            @Override
-            public void onFailure(String reason) {
-                tvStatus.setText(reason + " — đứng trước camera rõ hơn");
-                isProcessing = false;
-            }
-        });
+        FaceGeometricHelper.extractEmbedding(this, rotated,
+                new FaceGeometricHelper.EmbeddingCallback() {
+                    @Override
+                    public void onSuccess(float[] queryEmbedding) {
+                        new Thread(() -> matchAndRecord(queryEmbedding)).start();
+                    }
+
+                    @Override
+                    public void onFailure(String reason) {
+                        // Thử góc tiếp theo
+                        tryRecognizeWithRotation(original, angles, index + 1);
+                    }
+                });
     }
 
     /** So khớp embedding với tất cả SV trong DB, ghi điểm danh nếu tìm thấy */
