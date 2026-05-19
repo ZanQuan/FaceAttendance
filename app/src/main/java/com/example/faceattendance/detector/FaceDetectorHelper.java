@@ -28,15 +28,27 @@ public class FaceDetectorHelper implements ImageAnalysis.Analyzer {
 
     @Override
     public void analyze(@NonNull ImageProxy imageProxy) {
+        int rotation = imageProxy.getImageInfo().getRotationDegrees();
+
         @SuppressWarnings("UnsafeOptInUsageError")
         InputImage image = InputImage.fromMediaImage(
                 imageProxy.getImage(),
-                imageProxy.getImageInfo().getRotationDegrees()
+                rotation
         );
+
         detector.process(image)
                 .addOnSuccessListener(faces -> {
-                    int w = imageProxy.getWidth();
-                    int h = imageProxy.getHeight();
+                    // Khi xoay 90°/270°, cảm biến landscape nhưng ML Kit
+                    // trả bounding box theo ảnh đã xoay (portrait)
+                    // → hoán đổi w/h để scale overlay đúng
+                    int w, h;
+                    if (rotation == 90 || rotation == 270) {
+                        w = imageProxy.getHeight();
+                        h = imageProxy.getWidth();
+                    } else {
+                        w = imageProxy.getWidth();
+                        h = imageProxy.getHeight();
+                    }
                     callback.onFacesDetected(faces, w, h);
                 })
                 .addOnFailureListener(Throwable::printStackTrace)

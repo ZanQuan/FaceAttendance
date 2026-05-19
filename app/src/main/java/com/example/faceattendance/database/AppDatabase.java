@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
         entities = {Student.class, Attendance.class, ClassRoomEntity.class, Teacher.class},
-        version = 5,
+        version = 6,          // ← tăng từ 5 lên 6
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -49,6 +49,25 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    // v4 → v5: (giữ nguyên để không mất dữ liệu cũ)
+    static final Migration MIGRATION_4_5 = new Migration(4, 5) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {}
+    };
+
+    // v5 → v6: thêm 2 cột embedding mới cho ảnh 2 và ảnh 3
+    static final Migration MIGRATION_5_6 = new Migration(5, 6) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "ALTER TABLE students ADD COLUMN face_embedding_json_2 TEXT DEFAULT ''"
+            );
+            database.execSQL(
+                    "ALTER TABLE students ADD COLUMN face_embedding_json_3 TEXT DEFAULT ''"
+            );
+        }
+    };
+
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
@@ -58,8 +77,15 @@ public abstract class AppDatabase extends RoomDatabase {
                                     AppDatabase.class,
                                     "face_attendance.db"
                             )
-                            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
-                            .fallbackToDestructiveMigration() // xóa DB nếu vẫn còn xung đột
+                            .addMigrations(
+                                    MIGRATION_1_2,
+                                    MIGRATION_2_3,
+                                    MIGRATION_3_4,
+                                    MIGRATION_4_5,
+                                    MIGRATION_5_6   // ← thêm migration mới
+                            )
+                            // KHÔNG dùng fallbackToDestructiveMigration nữa
+                            // vì đã có đủ migration → dữ liệu cũ không bị xóa
                             .build();
                 }
             }

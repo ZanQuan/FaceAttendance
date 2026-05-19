@@ -33,6 +33,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -130,7 +131,7 @@ public class MainActivity extends AppCompatActivity {
                         .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                         .build();
                 analysis.setAnalyzer(
-                        ContextCompat.getMainExecutor(this),
+                        Executors.newSingleThreadExecutor(),
                         new FaceDetectorHelper((faces, w, h) ->
                                 runOnUiThread(() -> {
                                     faceCount = faces.size();

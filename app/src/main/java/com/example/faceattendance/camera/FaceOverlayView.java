@@ -11,6 +11,7 @@ public class FaceOverlayView extends View {
     private List<Face> faces;
     private int imageWidth  = 1;
     private int imageHeight = 1;
+    private boolean isFrontCamera = true; // mặc định camera trước
     private Paint boxPaint;
     private Paint textPaint;
 
@@ -27,8 +28,12 @@ public class FaceOverlayView extends View {
         textPaint.setStyle(Paint.Style.FILL);
     }
 
-    public void setFaces(List<Face> faceList,
-                         int imgW, int imgH) {
+    /** Gọi từ Activity để báo camera trước (true) hay sau (false) */
+    public void setFrontCamera(boolean frontCamera) {
+        this.isFrontCamera = frontCamera;
+    }
+
+    public void setFaces(List<Face> faceList, int imgW, int imgH) {
         this.faces       = faceList;
         this.imageWidth  = imgW;
         this.imageHeight = imgH;
@@ -57,8 +62,18 @@ public class FaceOverlayView extends View {
             box.top    *= scaleY;
             box.bottom *= scaleY;
 
+            // Camera trước: PreviewView tự mirror ảnh ngang,
+            // nhưng ML Kit trả tọa độ gốc chưa mirror
+            // → lật X để hộp khớp với mặt hiển thị
+            if (isFrontCamera) {
+                float mirroredLeft  = getWidth() - box.right;
+                float mirroredRight = getWidth() - box.left;
+                box.left  = mirroredLeft;
+                box.right = mirroredRight;
+            }
+
             canvas.drawRect(box, boxPaint);
-            canvas.drawText("Mặt " + (i+1),
+            canvas.drawText("Mặt " + (i + 1),
                     box.left + 8, box.top - 10, textPaint);
         }
     }

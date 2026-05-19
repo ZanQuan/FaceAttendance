@@ -120,35 +120,7 @@ public class FaceGeometricHelper {
         float cx    = box.exactCenterX();
         float cy    = box.exactCenterY();
 
-        List<Float> features = new ArrayList<>();
-
-        // ── Phần A: Contour points (chuẩn hóa về [-1, 1] quanh tâm mặt) ──
-        int[] contourTypes = {
-                FaceContour.FACE,
-                FaceContour.LEFT_EYE,
-                FaceContour.RIGHT_EYE,
-                FaceContour.LEFT_EYEBROW_TOP,
-                FaceContour.LEFT_EYEBROW_BOTTOM,
-                FaceContour.RIGHT_EYEBROW_TOP,
-                FaceContour.RIGHT_EYEBROW_BOTTOM,
-                FaceContour.NOSE_BRIDGE,
-                FaceContour.NOSE_BOTTOM,
-                FaceContour.UPPER_LIP_TOP,
-                FaceContour.UPPER_LIP_BOTTOM,
-                FaceContour.LOWER_LIP_TOP,
-                FaceContour.LOWER_LIP_BOTTOM,
-        };
-
-        for (int contourType : contourTypes) {
-            FaceContour contour = face.getContour(contourType);
-            if (contour == null) continue;
-            for (PointF p : contour.getPoints()) {
-                features.add((p.x - cx) / faceW);   // normalized x
-                features.add((p.y - cy) / faceH);   // normalized y
-            }
-        }
-
-        // ── Phần B: Landmark positions ──
+        // ── Phần B: Landmark positions (10 điểm × 2 = 20 features, LUÔN CỐ ĐỊNH) ──
         int[] landmarkTypes = {
                 FaceLandmark.LEFT_EYE,
                 FaceLandmark.RIGHT_EYE,
@@ -162,63 +134,44 @@ public class FaceGeometricHelper {
                 FaceLandmark.MOUTH_BOTTOM,
         };
 
-        PointF[] landmarkPoints = new PointF[landmarkTypes.length];
+        PointF[] lp = new PointF[landmarkTypes.length];
+        // Khai báo features với kích thước CỐ ĐỊNH ngay từ đầu
+        float[] features = new float[20 + 13]; // B=20, C=13
+
         for (int i = 0; i < landmarkTypes.length; i++) {
             FaceLandmark lm = face.getLandmark(landmarkTypes[i]);
             if (lm != null) {
-                landmarkPoints[i] = lm.getPosition();
-                features.add((lm.getPosition().x - cx) / faceW);
-                features.add((lm.getPosition().y - cy) / faceH);
+                lp[i] = lm.getPosition();
+                features[i * 2]     = (lm.getPosition().x - cx) / faceW;
+                features[i * 2 + 1] = (lm.getPosition().y - cy) / faceH;
             } else {
-                landmarkPoints[i] = null;
-                features.add(0f);
-                features.add(0f);
+                lp[i] = null;
+                features[i * 2]     = 0f;
+                features[i * 2 + 1] = 0f;
             }
         }
 
-        // ── Phần C: Geometric ratio features (phân biệt người tốt hơn) ──
-        // Tính khoảng cách giữa các cặp landmarks, chuẩn hóa bởi chiều rộng mặt
-        // idx: 0=leftEye, 1=rightEye, 2=leftEar, 3=rightEar, 4=nose,
-        //      5=leftCheek, 6=rightCheek, 7=mouthL, 8=mouthR, 9=mouthBottom
-        int[][] ratiosPairs = {
-                {0, 1},  // khoảng cách hai mắt (inter-ocular distance)
-                {0, 4},  // mắt trái → mũi
-                {1, 4},  // mắt phải → mũi
-                {4, 9},  // mũi → dưới miệng
-                {0, 7},  // mắt trái → góc miệng trái
-                {1, 8},  // mắt phải → góc miệng phải
-                {7, 8},  // chiều ngang miệng
-                {2, 3},  // chiều ngang tai (face width proxy)
-                {5, 6},  // khoảng cách má
-                {0, 9},  // mắt trái → cằm
-                {1, 9},  // mắt phải → cằm
-                {4, 7},  // mũi → miệng trái
-                {4, 8},  // mũi → miệng phải
+        // ── Phần C: Geometric ratio features (13 ratios, LUÔN CỐ ĐỊNH) ──
+        int[][] pairs = {
+                {0,1},{0,4},{1,4},{4,9},{0,7},
+                {1,8},{7,8},{2,3},{5,6},{0,9},
+                {1,9},{4,7},{4,8}
         };
 
-        // Tính inter-ocular distance làm chuẩn hóa
-        float iod = 1f; // fallback
-        if (landmarkPoints[0] != null && landmarkPoints[1] != null) {
-            iod = dist(landmarkPoints[0], landmarkPoints[1]);
+        float iod = 1f;
+        if (lp[0] != null && lp[1] != null) {
+            iod = dist(lp[0], lp[1]);
             if (iod < 1f) iod = 1f;
         }
 
-        for (int[] pair : ratiosPairs) {
-            PointF a = landmarkPoints[pair[0]];
-            PointF b = landmarkPoints[pair[1]];
-            if (a != null && b != null) {
-                features.add(dist(a, b) / iod); // ratio chuẩn hóa bởi IOD
-            } else {
-                features.add(0f);
-            }
+        int offset = 20; // bắt đầu sau phần B
+        for (int i = 0; i < pairs.length; i++) {
+            PointF a = lp[pairs[i][0]];
+            PointF b = lp[pairs[i][1]];
+            features[offset + i] = (a != null && b != null) ? dist(a, b) / iod : 0f;
         }
 
-        // Convert List<Float> → float[]
-        if (features.isEmpty()) return null;
-        float[] result = new float[features.size()];
-        for (int i = 0; i < features.size(); i++) result[i] = features.get(i);
-
-        return l2Normalize(result);
+        return l2Normalize(features);
     }
 
     // ─────────────────────────────────────────────

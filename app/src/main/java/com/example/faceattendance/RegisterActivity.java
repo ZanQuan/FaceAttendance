@@ -1,20 +1,16 @@
 package com.example.faceattendance;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.net.Uri;
 import android.os.Bundle;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.content.Intent;
 
-import androidx.activity.result.ActivityResultLauncher;
-import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
@@ -35,7 +31,6 @@ import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.concurrent.ExecutionException;
 
 public class RegisterActivity extends AppCompatActivity {
@@ -45,23 +40,28 @@ public class RegisterActivity extends AppCompatActivity {
     private PreviewView       previewView;
     private TextView          tvCameraStatus;
     private ImageView         imgCaptured;
-    private MaterialButton    btnCapture, btnPickGallery, btnRegister, btnViewList;
+    private MaterialButton    btnCapture, btnRegister, btnViewList;
     private TextInputEditText etName, etCode;
     private ImageCapture      imageCapture;
 
-    private String  savedPhotoPath = null;
-    private float[] savedEmbedding = null;
-    private int     classId        = 0;
+    private int classId = 0;
 
-    // ─────────────────────────────────────────────
-    // Launcher chọn ảnh từ thư viện
-    // ─────────────────────────────────────────────
-    private final ActivityResultLauncher<String> galleryLauncher =
-            registerForActivityResult(
-                    new ActivityResultContracts.GetContent(),
-                    uri -> {
-                        if (uri != null) handleGalleryImage(uri);
-                    });
+    // ── 3 embeddings tương ứng 3 ảnh ──
+    private float[] embedding1 = null; // nhìn thẳng
+    private float[] embedding2 = null; // nghiêng trái
+    private float[] embedding3 = null; // nghiêng phải
+    private String  savedPhotoPath = null;
+
+    // Bước chụp hiện tại: 1, 2, 3 — 0 = chưa bắt đầu
+    private int captureStep = 0;
+
+    // Hướng dẫn hiển thị cho từng bước
+    private static final String[] STEP_GUIDE = {
+            "",
+            "📸 Ảnh 1/3 — Nhìn THẲNG vào camera",
+            "📸 Ảnh 2/3 — Nghiêng nhẹ sang TRÁI",
+            "📸 Ảnh 3/3 — Nghiêng nhẹ sang PHẢI",
+    };
 
     // ─────────────────────────────────────────────
     // Lifecycle
@@ -72,11 +72,19 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
         bindViews();
+
         classId = getIntent().getIntExtra("classId", 0);
 
+        // Bắt đầu từ bước 1 ngay khi vào màn hình
+        captureStep = 1;
+        tvCameraStatus.setText(STEP_GUIDE[captureStep]);
+
         btnCapture.setOnClickListener(v -> takePhoto());
-        btnPickGallery.setOnClickListener(v -> galleryLauncher.launch("image/*"));
-        btnRegister.setOnClickListener(v -> { if (validate()) saveStudent(); });
+
+        btnRegister.setOnClickListener(v -> {
+            if (validate()) saveStudent();
+        });
+
         btnViewList.setOnClickListener(v -> {
             Intent intent = new Intent(this, StudentListActivity.class);
             intent.putExtra("classId", classId);
@@ -122,14 +130,20 @@ public class RegisterActivity extends AppCompatActivity {
         }, ContextCompat.getMainExecutor(this));
     }
 
+    // ─────────────────────────────────────────────
+    // Chụp ảnh
+    // ─────────────────────────────────────────────
+
     private void takePhoto() {
         if (imageCapture == null) return;
-        tvCameraStatus.setText("Đang chụp...");
+        if (captureStep < 1 || captureStep > 3) return;
+
+        tvCameraStatus.setText("Đang chụp ảnh " + captureStep + "/3...");
         btnCapture.setEnabled(false);
 
         File dir = new File(getFilesDir(), "faces");
         if (!dir.exists()) dir.mkdirs();
-        File photoFile = new File(dir, "sv_" + System.currentTimeMillis() + ".jpg");
+        File photoFile = new File(dir, "sv_" + captureStep + "_" + System.currentTimeMillis() + ".jpg");
 
         ImageCapture.OutputFileOptions options =
                 new ImageCapture.OutputFileOptions.Builder(photoFile).build();
@@ -141,6 +155,7 @@ public class RegisterActivity extends AppCompatActivity {
                     public void onImageSaved(@NonNull ImageCapture.OutputFileResults r) {
                         processPhoto(photoFile);
                     }
+
                     @Override
                     public void onError(@NonNull ImageCaptureException e) {
                         tvCameraStatus.setText("Lỗi camera: " + e.getMessage());
@@ -150,61 +165,7 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     // ─────────────────────────────────────────────
-    // Chọn ảnh từ thư viện
-    // ─────────────────────────────────────────────
-
-    private void handleGalleryImage(Uri uri) {
-        tvCameraStatus.setText("Đang xử lý ảnh...");
-        btnPickGallery.setEnabled(false);
-
-        new Thread(() -> {
-            try {
-                // Đọc bitmap từ URI
-                InputStream is = getContentResolver().openInputStream(uri);
-                Bitmap original = BitmapFactory.decodeStream(is);
-                if (is != null) is.close();
-
-                if (original == null) {
-                    runOnUiThread(() -> {
-                        tvCameraStatus.setText("Không đọc được ảnh");
-                        btnPickGallery.setEnabled(true);
-                    });
-                    return;
-                }
-
-                // Lưu ảnh vào thư mục nội bộ
-                File dir = new File(getFilesDir(), "faces");
-                if (!dir.exists()) dir.mkdirs();
-                File photoFile = new File(dir, "sv_gallery_" + System.currentTimeMillis() + ".jpg");
-
-                FileOutputStream fos = new FileOutputStream(photoFile);
-                original.compress(Bitmap.CompressFormat.JPEG, 90, fos);
-                fos.close();
-
-                runOnUiThread(() -> {
-                    tvCameraStatus.setText("Đang phân tích khuôn mặt...");
-                    // Hiển thị preview ảnh đã chọn
-                    imgCaptured.setImageBitmap(original);
-                    imgCaptured.setVisibility(ImageView.VISIBLE);
-                });
-
-                // Xử lý nhận diện khuôn mặt (trên main thread vì ML Kit cần)
-                runOnUiThread(() ->
-                    tryDetectWithRotation(original, photoFile, new int[]{0, 90, 270, 180}, 0)
-                );
-
-            } catch (Exception e) {
-                Log.e(TAG, "Gallery image error", e);
-                runOnUiThread(() -> {
-                    tvCameraStatus.setText("Lỗi: " + e.getMessage());
-                    btnPickGallery.setEnabled(true);
-                });
-            }
-        }).start();
-    }
-
-    // ─────────────────────────────────────────────
-    // Trích xuất embedding từ ảnh
+    // Xử lý ảnh sau khi chụp
     // ─────────────────────────────────────────────
 
     private void processPhoto(File photoFile) {
@@ -214,17 +175,24 @@ public class RegisterActivity extends AppCompatActivity {
             btnCapture.setEnabled(true);
             return;
         }
-        tvCameraStatus.setText("Đang phân tích...");
+
+        // Lưu path ảnh đầu tiên làm avatar
+        if (captureStep == 1) {
+            savedPhotoPath = photoFile.getAbsolutePath();
+        }
+
+        tvCameraStatus.setText("Đang phân tích khuôn mặt...");
         tryDetectWithRotation(original, photoFile, new int[]{0, 90, 270, 180}, 0);
     }
 
     private void tryDetectWithRotation(Bitmap original, File photoFile,
                                        int[] angles, int index) {
         if (index >= angles.length) {
+            // Không phát hiện được mặt ở bất kỳ góc nào
             runOnUiThread(() -> {
-                tvCameraStatus.setText("Không phát hiện mặt — giữ thẳng & đủ sáng");
+                tvCameraStatus.setText("Không phát hiện mặt — giữ thẳng & đủ sáng\n"
+                        + STEP_GUIDE[captureStep]);
                 btnCapture.setEnabled(true);
-                btnPickGallery.setEnabled(true);
             });
             return;
         }
@@ -241,36 +209,57 @@ public class RegisterActivity extends AppCompatActivity {
         }
 
         final Bitmap finalBmp = rotated;
+        final int    step     = captureStep; // lưu step hiện tại vào local var
 
         FaceGeometricHelper.extractEmbedding(this, rotated,
                 new FaceGeometricHelper.EmbeddingCallback() {
                     @Override
                     public void onSuccess(float[] embedding) {
+                        // Lưu ảnh đã xoay đúng vào file
                         try {
                             FileOutputStream fos = new FileOutputStream(photoFile);
                             finalBmp.compress(Bitmap.CompressFormat.JPEG, 90, fos);
                             fos.close();
                         } catch (Exception e) {
-                            Log.e(TAG, "save error", e);
+                            Log.e(TAG, "Lỗi lưu ảnh", e);
                         }
-                        savedPhotoPath = photoFile.getAbsolutePath();
-                        savedEmbedding = embedding;
+
+                        // Lưu embedding vào đúng slot
+                        if (step == 1) embedding1 = embedding;
+                        else if (step == 2) embedding2 = embedding;
+                        else if (step == 3) embedding3 = embedding;
+
+                        Log.d(TAG, "Ảnh " + step + " OK | features=" + embedding.length
+                                + " | angle=" + angle + "°");
+
                         runOnUiThread(() -> {
                             imgCaptured.setImageBitmap(finalBmp);
                             imgCaptured.setVisibility(ImageView.VISIBLE);
-                            tvCameraStatus.setText("✓ " + embedding.length
-                                    + " điểm đặc trưng (xoay " + angle + "°)");
-                            btnCapture.setText("📸 Chụp lại");
-                            btnCapture.setEnabled(true);
-                            btnPickGallery.setEnabled(true);
-                            Toast.makeText(RegisterActivity.this,
-                                    "Khuôn mặt OK!", Toast.LENGTH_SHORT).show();
-                            Log.d(TAG, "OK: " + embedding.length + " features, angle=" + angle);
+
+                            if (step < 3) {
+                                // Còn bước tiếp theo
+                                captureStep = step + 1;
+                                String done = "✅ ".repeat(step); // số tick = số ảnh xong
+                                tvCameraStatus.setText(done + "\n" + STEP_GUIDE[captureStep]);
+                                btnCapture.setText("📸 Chụp ảnh " + captureStep + "/3");
+                                btnCapture.setEnabled(true);
+                                Toast.makeText(RegisterActivity.this,
+                                        "✅ Ảnh " + step + "/3 xong!", Toast.LENGTH_SHORT).show();
+                            } else {
+                                // Đủ 3 ảnh
+                                captureStep = 4; // đánh dấu hoàn thành
+                                tvCameraStatus.setText("✅✅✅ Đủ 3 ảnh — Nhập tên & MSSV rồi nhấn Đăng ký");
+                                btnCapture.setText("📸 Chụp lại từ đầu");
+                                btnCapture.setEnabled(true);
+                                Toast.makeText(RegisterActivity.this,
+                                        "✅ Đủ 3 ảnh! Nhấn Đăng ký", Toast.LENGTH_SHORT).show();
+                            }
                         });
                     }
 
                     @Override
                     public void onFailure(String reason) {
+                        // Thử góc xoay tiếp theo
                         tryDetectWithRotation(original, photoFile, angles, index + 1);
                     }
                 });
@@ -284,10 +273,24 @@ public class RegisterActivity extends AppCompatActivity {
         String name = getText(etName);
         String code = getText(etCode);
 
-        if (name.isEmpty()) { etName.setError("Nhập họ tên"); etName.requestFocus(); return false; }
-        if (code.isEmpty()) { etCode.setError("Nhập MSSV");  etCode.requestFocus(); return false; }
-        if (savedPhotoPath == null || savedEmbedding == null) {
-            Toast.makeText(this, "Vui lòng chụp hoặc chọn ảnh khuôn mặt trước", Toast.LENGTH_SHORT).show();
+        if (name.isEmpty()) {
+            etName.setError("Nhập họ tên");
+            etName.requestFocus();
+            return false;
+        }
+        if (code.isEmpty()) {
+            etCode.setError("Nhập MSSV");
+            etCode.requestFocus();
+            return false;
+        }
+        // Bắt buộc ít nhất 2/3 ảnh để đăng ký
+        int doneCount = (embedding1 != null ? 1 : 0)
+                + (embedding2 != null ? 1 : 0)
+                + (embedding3 != null ? 1 : 0);
+        if (doneCount < 2) {
+            Toast.makeText(this,
+                    "Cần chụp ít nhất 2/3 ảnh khuôn mặt (đã có " + doneCount + "/3)",
+                    Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -297,12 +300,16 @@ public class RegisterActivity extends AppCompatActivity {
         String name = getText(etName);
         String code = getText(etCode);
 
+        btnRegister.setEnabled(false);
+
         new Thread(() -> {
             AppDatabase db = AppDatabase.getInstance(this);
 
             if (db.studentDao().getByCode(code) != null) {
-                runOnUiThread(() ->
-                        Toast.makeText(this, "MSSV đã tồn tại!", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "MSSV đã tồn tại!", Toast.LENGTH_SHORT).show();
+                    btnRegister.setEnabled(true);
+                });
                 return;
             }
 
@@ -312,14 +319,22 @@ public class RegisterActivity extends AppCompatActivity {
             s.photoPath   = savedPhotoPath;
             s.createdAt   = System.currentTimeMillis();
             s.classId     = classId;
-            s.setFaceEmbedding(savedEmbedding);
+
+            // Lưu cả 3 embedding
+            s.setFaceEmbedding(embedding1);
+            s.setFaceEmbedding2(embedding2);
+            s.setFaceEmbedding3(embedding3);
 
             db.studentDao().insert(s);
-            Log.d(TAG, "Đã lưu SV: " + name + " | embedding_dim=" + savedEmbedding.length);
+
+            int dim = embedding1 != null ? embedding1.length : 0;
+            Log.d(TAG, "Đã lưu: " + name + " | embeddings=3 | dim=" + dim);
 
             runOnUiThread(() -> {
-                Toast.makeText(this, "✅ Đăng ký thành công: " + name, Toast.LENGTH_SHORT).show();
+                Toast.makeText(this,
+                        "✅ Đăng ký thành công: " + name, Toast.LENGTH_LONG).show();
                 resetForm();
+                btnRegister.setEnabled(true);
             });
         }).start();
     }
@@ -329,26 +344,29 @@ public class RegisterActivity extends AppCompatActivity {
     // ─────────────────────────────────────────────
 
     private void bindViews() {
-        previewView     = findViewById(R.id.previewView);
-        tvCameraStatus  = findViewById(R.id.tvCameraStatus);
-        imgCaptured     = findViewById(R.id.imgCaptured);
-        btnCapture      = findViewById(R.id.btnCapture);
-        btnPickGallery  = findViewById(R.id.btnPickGallery);
-        btnRegister     = findViewById(R.id.btnRegister);
-        btnViewList     = findViewById(R.id.btnViewList);
-        etName          = findViewById(R.id.etName);
-        etCode          = findViewById(R.id.etCode);
+        previewView    = findViewById(R.id.previewView);
+        tvCameraStatus = findViewById(R.id.tvCameraStatus);
+        imgCaptured    = findViewById(R.id.imgCaptured);
+        btnCapture     = findViewById(R.id.btnCapture);
+        btnRegister    = findViewById(R.id.btnRegister);
+        btnViewList    = findViewById(R.id.btnViewList);
+        etName         = findViewById(R.id.etName);
+        etCode         = findViewById(R.id.etCode);
     }
 
     private void resetForm() {
         etName.setText("");
         etCode.setText("");
+
+        // Reset embedding và bước chụp
+        embedding1 = embedding2 = embedding3 = null;
         savedPhotoPath = null;
-        savedEmbedding = null;
+        captureStep = 1;
+
         imgCaptured.setImageBitmap(null);
         imgCaptured.setVisibility(ImageView.GONE);
-        tvCameraStatus.setText("Chưa chụp");
-        btnCapture.setText("📸 Chụp ảnh");
+        tvCameraStatus.setText(STEP_GUIDE[captureStep]);
+        btnCapture.setText("📸 Chụp ảnh 1/3");
     }
 
     private String getText(TextInputEditText et) {
@@ -358,7 +376,8 @@ public class RegisterActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions, @NonNull int[] grantResults) {
+                                           @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         if (requestCode == 100 && grantResults.length > 0
                 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
