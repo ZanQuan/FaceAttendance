@@ -75,7 +75,7 @@
 
         </LinearLayout>
 
-        <!-- Camera -->
+        <!-- Camera Zone -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -88,10 +88,11 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="CHỤP ẢNH KHUÔN MẶT"
+                android:text="KHUÔN MẶT SINH VIÊN"
                 android:textColor="#90CAF9"
                 android:textStyle="bold" />
 
+            <!-- Camera preview (dùng khi chụp) -->
             <androidx.camera.view.PreviewView
                 android:id="@+id/previewView"
                 android:layout_width="260dp"
@@ -99,12 +100,13 @@
                 android:layout_marginTop="12dp"
                 android:background="#12233D" />
 
-            <!-- Ảnh đã chụp -->
+            <!-- Ảnh đã chụp / đã chọn -->
             <ImageView
                 android:id="@+id/imgCaptured"
-                android:layout_width="120dp"
-                android:layout_height="120dp"
+                android:layout_width="140dp"
+                android:layout_height="140dp"
                 android:layout_marginTop="14dp"
+                android:scaleType="centerCrop"
                 android:visibility="gone" />
 
             <!-- Status -->
@@ -117,20 +119,40 @@
                 android:textColor="#42A5F5"
                 android:textSize="13sp" />
 
-            <!-- Chụp -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnCapture"
+            <!-- Hai nút chụp / chọn từ thư viện -->
+            <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="📸 Chụp ảnh"
-                android:textColor="#FFFFFF"
-                android:backgroundTint="#1565C0"
-                app:cornerRadius="22dp" />
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <!-- Nút chụp ảnh -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnCapture"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="10dp"
+                    android:text="📸 Chụp ảnh"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#1565C0"
+                    app:cornerRadius="22dp" />
+
+                <!-- Nút chọn từ thư viện -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnPickGallery"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🖼 Chọn ảnh"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#2E7D32"
+                    app:cornerRadius="22dp" />
+
+            </LinearLayout>
 
         </LinearLayout>
 
-        <!-- Buttons -->
+        <!-- Action buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -5,12 +5,16 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.camera.core.CameraSelector;
@@ -30,6 +34,8 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.concurrent.ExecutionException;
 
 public class RegisterActivity extends AppCompatActivity {
@@ -39,7 +45,7 @@ public class RegisterActivity extends AppCompatActivity {
     private PreviewView       previewView;
     private TextView          tvCameraStatus;
     private ImageView         imgCaptured;
-    private MaterialButton    btnCapture, btnRegister, btnViewList;
+    private MaterialButton    btnCapture, btnPickGallery, btnRegister, btnViewList;
     private TextInputEditText etName, etCode;
     private ImageCapture      imageCapture;
 
@@ -48,9 +54,18 @@ public class RegisterActivity extends AppCompatActivity {
     private int     classId        = 0;
 
     // ─────────────────────────────────────────────
+    // Launcher chọn ảnh từ thư viện
+    // ─────────────────────────────────────────────
+    private final ActivityResultLauncher<String> galleryLauncher =
+            registerForActivityResult(
+                    new ActivityResultContracts.GetContent(),
+                    uri -> {
+                        if (uri != null) handleGalleryImage(uri);
+                    });
+
+    // ─────────────────────────────────────────────
     // Lifecycle
     // ─────────────────────────────────────────────
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,10 +73,15 @@ public class RegisterActivity extends AppCompatActivity {
         setContentView(R.layout.activity_register);
         bindViews();
         classId = getIntent().getIntExtra("classId", 0);
+
         btnCapture.setOnClickListener(v -> takePhoto());
+        btnPickGallery.setOnClickListener(v -> galleryLauncher.launch("image/*"));
         btnRegister.setOnClickListener(v -> { if (validate()) saveStudent(); });
-        btnViewList.setOnClickListener(v ->
-                startActivity(new Intent(this, StudentListActivity.class)));
+        btnViewList.setOnClickListener(v -> {
+            Intent intent = new Intent(this, StudentListActivity.class);
+            intent.putExtra("classId", classId);
+            startActivity(intent);
+        });
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -130,8 +150,63 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     // ─────────────────────────────────────────────
-    // Trích xuất embedding từ ảnh  ← PHẦN QUAN TRỌNG
+    // Chọn ảnh từ thư viện
     // ─────────────────────────────────────────────
+
+    private void handleGalleryImage(Uri uri) {
+        tvCameraStatus.setText("Đang xử lý ảnh...");
+        btnPickGallery.setEnabled(false);
+
+        new Thread(() -> {
+            try {
+                // Đọc bitmap từ URI
+                InputStream is = getContentResolver().openInputStream(uri);
+                Bitmap original = BitmapFactory.decodeStream(is);
+                if (is != null) is.close();
+
+                if (original == null) {
+                    runOnUiThread(() -> {
+                        tvCameraStatus.setText("Không đọc được ảnh");
+                        btnPickGallery.setEnabled(true);
+                    });
+                    return;
+                }
+
+                // Lưu ảnh vào thư mục nội bộ
+                File dir = new File(getFilesDir(), "faces");
+                if (!dir.exists()) dir.mkdirs();
+                File photoFile = new File(dir, "sv_gallery_" + System.currentTimeMillis() + ".jpg");
+
+                FileOutputStream fos = new FileOutputStream(photoFile);
+                original.compress(Bitmap.CompressFormat.JPEG, 90, fos);
+                fos.close();
+
+                runOnUiThread(() -> {
+                    tvCameraStatus.setText("Đang phân tích khuôn mặt...");
+                    // Hiển thị preview ảnh đã chọn
+                    imgCaptured.setImageBitmap(original);
+                    imgCaptured.setVisibility(ImageView.VISIBLE);
+                });
+
+                // Xử lý nhận diện khuôn mặt (trên main thread vì ML Kit cần)
+                runOnUiThread(() ->
+                    tryDetectWithRotation(original, photoFile, new int[]{0, 90, 270, 180}, 0)
+                );
+
+            } catch (Exception e) {
+                Log.e(TAG, "Gallery image error", e);
+                runOnUiThread(() -> {
+                    tvCameraStatus.setText("Lỗi: " + e.getMessage());
+                    btnPickGallery.setEnabled(true);
+                });
+            }
+        }).start();
+    }
+
+    // ─────────────────────────────────────────────
+    // Trích xuất embedding từ ảnh
+    // ─────────────────────────────────────────────
+
     private void processPhoto(File photoFile) {
         Bitmap original = BitmapFactory.decodeFile(photoFile.getAbsolutePath());
         if (original == null) {
@@ -149,6 +224,7 @@ public class RegisterActivity extends AppCompatActivity {
             runOnUiThread(() -> {
                 tvCameraStatus.setText("Không phát hiện mặt — giữ thẳng & đủ sáng");
                 btnCapture.setEnabled(true);
+                btnPickGallery.setEnabled(true);
             });
             return;
         }
@@ -171,8 +247,7 @@ public class RegisterActivity extends AppCompatActivity {
                     @Override
                     public void onSuccess(float[] embedding) {
                         try {
-                            java.io.FileOutputStream fos =
-                                    new java.io.FileOutputStream(photoFile);
+                            FileOutputStream fos = new FileOutputStream(photoFile);
                             finalBmp.compress(Bitmap.CompressFormat.JPEG, 90, fos);
                             fos.close();
                         } catch (Exception e) {
@@ -187,6 +262,7 @@ public class RegisterActivity extends AppCompatActivity {
                                     + " điểm đặc trưng (xoay " + angle + "°)");
                             btnCapture.setText("📸 Chụp lại");
                             btnCapture.setEnabled(true);
+                            btnPickGallery.setEnabled(true);
                             Toast.makeText(RegisterActivity.this,
                                     "Khuôn mặt OK!", Toast.LENGTH_SHORT).show();
                             Log.d(TAG, "OK: " + embedding.length + " features, angle=" + angle);
@@ -195,12 +271,10 @@ public class RegisterActivity extends AppCompatActivity {
 
                     @Override
                     public void onFailure(String reason) {
-                        // Thử góc tiếp theo
                         tryDetectWithRotation(original, photoFile, angles, index + 1);
                     }
                 });
     }
-
 
     // ─────────────────────────────────────────────
     // Validate & Save
@@ -213,7 +287,7 @@ public class RegisterActivity extends AppCompatActivity {
         if (name.isEmpty()) { etName.setError("Nhập họ tên"); etName.requestFocus(); return false; }
         if (code.isEmpty()) { etCode.setError("Nhập MSSV");  etCode.requestFocus(); return false; }
         if (savedPhotoPath == null || savedEmbedding == null) {
-            Toast.makeText(this, "Vui lòng chụp khuôn mặt trước", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Vui lòng chụp hoặc chọn ảnh khuôn mặt trước", Toast.LENGTH_SHORT).show();
             return false;
         }
         return true;
@@ -237,7 +311,7 @@ public class RegisterActivity extends AppCompatActivity {
             s.studentCode = code;
             s.photoPath   = savedPhotoPath;
             s.createdAt   = System.currentTimeMillis();
-            s.classId = classId;
+            s.classId     = classId;
             s.setFaceEmbedding(savedEmbedding);
 
             db.studentDao().insert(s);
@@ -255,14 +329,15 @@ public class RegisterActivity extends AppCompatActivity {
     // ─────────────────────────────────────────────
 
     private void bindViews() {
-        previewView    = findViewById(R.id.previewView);
-        tvCameraStatus = findViewById(R.id.tvCameraStatus);
-        imgCaptured    = findViewById(R.id.imgCaptured);
-        btnCapture     = findViewById(R.id.btnCapture);
-        btnRegister    = findViewById(R.id.btnRegister);
-        btnViewList    = findViewById(R.id.btnViewList);
-        etName         = findViewById(R.id.etName);
-        etCode         = findViewById(R.id.etCode);
+        previewView     = findViewById(R.id.previewView);
+        tvCameraStatus  = findViewById(R.id.tvCameraStatus);
+        imgCaptured     = findViewById(R.id.imgCaptured);
+        btnCapture      = findViewById(R.id.btnCapture);
+        btnPickGallery  = findViewById(R.id.btnPickGallery);
+        btnRegister     = findViewById(R.id.btnRegister);
+        btnViewList     = findViewById(R.id.btnViewList);
+        etName          = findViewById(R.id.etName);
+        etCode          = findViewById(R.id.etCode);
     }
 
     private void resetForm() {
@@ -273,7 +348,7 @@ public class RegisterActivity extends AppCompatActivity {
         imgCaptured.setImageBitmap(null);
         imgCaptured.setVisibility(ImageView.GONE);
         tvCameraStatus.setText("Chưa chụp");
-        btnCapture.setText("Chụp ảnh");
+        btnCapture.setText("📸 Chụp ảnh");
     }
 
     private String getText(TextInputEditText et) {
