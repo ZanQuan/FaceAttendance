@@ -1,9 +1,12 @@
 package com.example.faceattendance;
 
+import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -93,8 +96,49 @@ public class ClassSelectionActivity extends AppCompatActivity {
         EditText   etRoom         = dialogView.findViewById(R.id.etClassRoom);
         EditText   etTotal        = dialogView.findViewById(R.id.etClassTotal);
         RadioGroup rgSessions     = dialogView.findViewById(R.id.rgSessions);
-        EditText   etStartTime    = dialogView.findViewById(R.id.etStartTime);
         EditText   etGraceMinutes = dialogView.findViewById(R.id.etGraceMinutes);
+        android.widget.TextView tvStartTimePicker = dialogView.findViewById(R.id.tvStartTimePicker);
+        android.widget.TextView tvLateUntil       = dialogView.findViewById(R.id.tvLateUntil);
+
+        // Lưu giờ/phút đã chọn
+        int[] selectedTime = {-1, -1}; // [hour, minute], -1 = chưa chọn
+
+        // Helper: cập nhật dòng "Được trễ đến HH:MM"
+        Runnable updateLateUntil = () -> {
+            String graceStr2 = etGraceMinutes.getText().toString().trim();
+            if (selectedTime[0] < 0 || graceStr2.isEmpty()) {
+                tvLateUntil.setVisibility(android.view.View.GONE);
+                return;
+            }
+            int graceMins = 15;
+            try { graceMins = Integer.parseInt(graceStr2); } catch (NumberFormatException ignored) {}
+            int totalMins = selectedTime[0] * 60 + selectedTime[1] + graceMins;
+            int lateH = (totalMins / 60) % 24;
+            int lateM = totalMins % 60;
+            tvLateUntil.setText(String.format(
+                    "⏰ Sinh viên đến muộn nhất: %02d:%02d  (+%d phút)", lateH, lateM, graceMins));
+            tvLateUntil.setVisibility(android.view.View.VISIBLE);
+        };
+
+        // Bấm vào ô giờ → mở TimePickerDialog
+        tvStartTimePicker.setOnClickListener(v -> {
+            int initH = selectedTime[0] >= 0 ? selectedTime[0] : 7;
+            int initM = selectedTime[1] >= 0 ? selectedTime[1] : 0;
+            new TimePickerDialog(this, (view, hourOfDay, minute) -> {
+                selectedTime[0] = hourOfDay;
+                selectedTime[1] = minute;
+                tvStartTimePicker.setText(String.format("%02d:%02d", hourOfDay, minute));
+                tvStartTimePicker.setTextColor(0xFF1A237E);
+                updateLateUntil.run();
+            }, initH, initM, true).show();
+        });
+
+        // Khi thay đổi phút trễ → tự cập nhật lại giờ trễ
+        etGraceMinutes.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
+            public void onTextChanged(CharSequence s, int st, int b, int c) { updateLateUntil.run(); }
+            public void afterTextChanged(Editable s) {}
+        });
 
         new AlertDialog.Builder(this)
                 .setTitle("➕  Thêm lớp học")
@@ -104,7 +148,9 @@ public class ClassSelectionActivity extends AppCompatActivity {
                     String code      = etCode.getText().toString().trim();
                     String room      = etRoom.getText().toString().trim();
                     String totalStr  = etTotal.getText().toString().trim();
-                    String startTime = etStartTime.getText().toString().trim();
+                    String startTime = selectedTime[0] >= 0
+                            ? String.format("%02d:%02d", selectedTime[0], selectedTime[1])
+                            : "";
                     String graceStr  = etGraceMinutes.getText().toString().trim();
 
                     // Validate bắt buộc

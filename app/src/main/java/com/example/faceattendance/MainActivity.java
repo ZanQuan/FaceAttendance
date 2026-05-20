@@ -88,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         Button btnRegister = findViewById(R.id.btnRegister);
         Button btnHistory  = findViewById(R.id.btnHistory);
         Button btnStudents = findViewById(R.id.btnStudents);
+        Button btnReport = findViewById(R.id.btnReport);
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -121,6 +122,9 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(this, StudentListActivity.class);
             intent.putExtra("classId", currentClassId);  // ← thêm
             startActivity(intent);
+        });
+        btnReport.setOnClickListener(v -> {
+            startActivity(new Intent(this, ReportActivity.class));
         });
     }
 

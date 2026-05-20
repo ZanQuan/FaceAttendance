@@ -79,6 +79,13 @@
             android:text="SV"
             android:textSize="13sp"/>
 
+        <Button
+            android:id="@+id/btnReport"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📊 Báo cáo"
+            android:backgroundTint="#E53935"/>
+
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
