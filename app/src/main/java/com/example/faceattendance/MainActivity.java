@@ -49,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
     private String  currentClassCode;
     private String  currentClassName;
     private int     currentClassId = 0;
+
+    private String  classStartTime   = "";
+    private int     classGraceMinutes = 15; //phút trễ cho phép
     private boolean isProcessing = false; // chống double-tap
 
     // ─────────────────────────────────────────────
@@ -63,7 +66,17 @@ public class MainActivity extends AppCompatActivity {
         currentClassCode = getIntent().getStringExtra(ClassSelectionActivity.EXTRA_CLASS_CODE);
         currentClassName = getIntent().getStringExtra(ClassSelectionActivity.EXTRA_CLASS_NAME);
         currentClassId   = getIntent().getIntExtra("classId", 0);
-
+        int finalClassId = currentClassId;
+        new Thread(() -> {
+            if (finalClassId > 0) {
+                com.example.faceattendance.database.ClassRoomEntity cls =
+                        AppDatabase.getInstance(this).classRoomDao().getById(finalClassId);
+                if (cls != null) {
+                    classStartTime    = cls.startTime    != null ? cls.startTime : "";
+                    classGraceMinutes = cls.graceMinutes;
+                }
+            }
+        }).start();
         previewView = findViewById(R.id.previewView);
         faceOverlay = findViewById(R.id.faceOverlay);
         tvStatus    = findViewById(R.id.tvStatus);
@@ -322,23 +335,52 @@ public class MainActivity extends AppCompatActivity {
             }
         }
 
+        // Tính phút trễ
+        int lateMin = 0;
+        if (!classStartTime.isEmpty()) {
+            try {
+                String[] parts    = classStartTime.split(":");
+                int startHour     = Integer.parseInt(parts[0]);
+                int startMinute   = Integer.parseInt(parts[1]);
+
+                java.util.Calendar now = java.util.Calendar.getInstance();
+                int nowHour   = now.get(java.util.Calendar.HOUR_OF_DAY);
+                int nowMinute = now.get(java.util.Calendar.MINUTE);
+
+                int nowTotal   = nowHour   * 60 + nowMinute;
+                int startTotal = startHour * 60 + startMinute;
+                int diffMin    = nowTotal - startTotal;
+
+                if (diffMin > classGraceMinutes) {
+                    lateMin = diffMin;  // đi trễ bao nhiêu phút
+                }
+            } catch (Exception ignored) {}
+        }
+
         // Ghi điểm danh
         Attendance a = new Attendance();
-        a.studentId   = matched.id;
-        a.studentName = matched.name;
-        a.studentCode = matched.studentCode;
-        a.classId     = currentClassId;
-        a.timestamp   = System.currentTimeMillis();
-        a.date        = today;
-        a.time        = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+        a.studentId    = matched.id;
+        a.studentName  = matched.name;
+        a.studentCode  = matched.studentCode;
+        a.classId      = currentClassId;
+        a.timestamp    = System.currentTimeMillis();
+        a.date         = today;
+        a.time         = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+        a.lateMinutes  = lateMin;
         db.attendanceDao().insert(a);
 
-        runOnUiThread(() -> {
-            String classLabel = currentClassName != null ? " – " + currentClassName : "";
-            String msg = String.format("✅ %s (%s) lúc %s%s | tương đồng %.1f%%",
-                    matched.name, matched.studentCode, a.time, classLabel, matchScore * 100);
+        final int    finalLateMin = lateMin;
+        final String classLabel   = (currentClassName != null) ? " – " + currentClassName : ""; // ← thêm dòng này
 
-            Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+        runOnUiThread(() -> {
+            String lateTag = (finalLateMin > 0)
+                    ? " ⚠️ Trễ " + finalLateMin + " phút"
+                    : " ✅ Đúng giờ";
+            String msg = String.format("✅ %s (%s) lúc %s%s%s | %.1f%%",
+                    matched.name, matched.studentCode, a.time,
+                    classLabel, lateTag, matchScore * 100);
+
+            Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show();
             tvStatus.setText("Đã điểm danh: " + matched.name +
                     String.format(Locale.getDefault(), " (%.1f%%)", matchScore * 100));
             isProcessing = false;

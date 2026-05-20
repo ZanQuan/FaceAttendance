@@ -42,7 +42,6 @@ public class AttendanceAdapter extends RecyclerView.Adapter<AttendanceAdapter.VH
         h.tvAvatar.setText(initial);
         h.tvName.setText(a.studentName);
         h.tvCode.setText(a.studentCode);
-        h.tvTime.setText(a.time);
 
         // Format ngày từ yyyy-MM-dd → dd/MM/yyyy
         try {
@@ -50,6 +49,15 @@ public class AttendanceAdapter extends RecyclerView.Adapter<AttendanceAdapter.VH
             h.tvDate.setText(new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(d));
         } catch (Exception e) {
             h.tvDate.setText(a.date);
+        }
+
+        // ── MỚI: hiển thị giờ + trạng thái trễ ──────────────
+        if (a.lateMinutes > 0) {
+            h.tvTime.setText(a.time + "  ⚠️ Trễ " + a.lateMinutes + " phút");
+            h.tvTime.setTextColor(0xFFE53935); // đỏ
+        } else {
+            h.tvTime.setText(a.time + "  ✅ Đúng giờ");
+            h.tvTime.setTextColor(0xFF2E7D32); // xanh lá
         }
     }
 

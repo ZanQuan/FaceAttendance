@@ -21,4 +21,8 @@ public class Attendance {
 
     public long timestamp;
     public int classId;
+
+    // Số phút đi trễ so với giờ bắt đầu lớp (0 = đúng giờ)
+    @androidx.room.ColumnInfo(name = "late_minutes", defaultValue = "0")
+    public int lateMinutes = 0;
 }
