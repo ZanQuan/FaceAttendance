@@ -32,6 +32,7 @@ import com.google.common.util.concurrent.ListenableFuture;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.concurrent.ExecutionException;
+import java.util.List;
 
 public class RegisterActivity extends AppCompatActivity {
 
@@ -135,6 +136,10 @@ public class RegisterActivity extends AppCompatActivity {
     // ─────────────────────────────────────────────
 
     private void takePhoto() {
+        if (captureStep == 4) {
+            resetForm();
+            return;
+        }
         if (imageCapture == null) return;
         if (captureStep < 1 || captureStep > 3) return;
 
@@ -296,6 +301,19 @@ public class RegisterActivity extends AppCompatActivity {
         return true;
     }
 
+    /**
+     * Ngưỡng kiểm tra trùng khi đăng ký.
+     *
+     * Hệ thống dùng Geometric Features (ML Kit Landmark) — KHÔNG phải neural embedding.
+     * Với geometric features, hai người khác nhau tự nhiên có similarity 0.95–0.98
+     * vì mặt người có tỉ lệ tương đồng. Vì vậy ngưỡng phải cao (0.990–0.995).
+     *
+     * Cách điều chỉnh:
+     *   - Vẫn bị trùng nhầm  → tăng lên 0.995f
+     *   - Không bắt được cùng người đăng ký lại → giảm xuống 0.970f
+     */
+    private static final float DUPLICATE_THRESHOLD = 0.960f;
+
     private void saveStudent() {
         String name = getText(etName);
         String code = getText(etCode);
@@ -305,6 +323,7 @@ public class RegisterActivity extends AppCompatActivity {
         new Thread(() -> {
             AppDatabase db = AppDatabase.getInstance(this);
 
+            // ── 1. Kiểm tra trùng MSSV ──
             if (db.studentDao().getByCode(code) != null) {
                 runOnUiThread(() -> {
                     Toast.makeText(this, "MSSV đã tồn tại!", Toast.LENGTH_SHORT).show();
@@ -313,6 +332,69 @@ public class RegisterActivity extends AppCompatActivity {
                 return;
             }
 
+            // ── 2. Kiểm tra trùng khuôn mặt (dùng điểm TRUNG BÌNH, không phải OR) ──
+            //
+            // Lý do dùng trung bình thay vì "bất kỳ 1 cặp":
+            //   - 3 embedding mới × 3 embedding cũ = tối đa 9 cặp so sánh
+            //   - Logic OR (cũ): 1/9 cặp vượt ngưỡng → block → quá nhiều false positive
+            //   - Logic AVG (mới): phải có similarity TRUNG BÌNH cao → chắc chắn hơn
+            //
+            List<Student> allStudents = db.studentDao().getAll();
+            Student dupStudent = null;
+            float   dupScore   = 0f;
+
+            float[][] newEmbs = { embedding1, embedding2, embedding3 };
+
+            for (Student existing : allStudents) {
+                float[][] storedEmbs = {
+                        existing.getFaceEmbedding(),
+                        existing.getFaceEmbedding2(),
+                        existing.getFaceEmbedding3()
+                };
+
+                // Tính điểm trung bình của tất cả cặp hợp lệ
+                float totalScore = 0f;
+                int   pairCount  = 0;
+
+                for (float[] newEmb : newEmbs) {
+                    if (newEmb == null) continue;
+                    for (float[] storedEmb : storedEmbs) {
+                        if (storedEmb == null) continue;
+                        float score = FaceGeometricHelper.cosineSimilarity(newEmb, storedEmb);
+                        totalScore += score;
+                        pairCount++;
+                    }
+                }
+
+                if (pairCount == 0) continue;
+                float avgScore = totalScore / pairCount;
+
+                Log.d(TAG, "DupCheck vs " + existing.name
+                        + ": avg=" + String.format("%.4f", avgScore)
+                        + " (" + pairCount + " pairs)");
+
+                if (avgScore > dupScore) dupScore = avgScore;
+
+                if (avgScore >= DUPLICATE_THRESHOLD) {
+                    dupStudent = existing;
+                    break;
+                }
+            }
+
+            if (dupStudent != null) {
+                final Student dup   = dupStudent;
+                final float   score = dupScore;
+                runOnUiThread(() -> {
+                    Toast.makeText(this,
+                            String.format("❌ Khuôn mặt đã được đăng ký!\nTrùng với: %s (%s)\nĐộ tương đồng TB: %.1f%%",
+                                    dup.name, dup.studentCode, score * 100),
+                            Toast.LENGTH_LONG).show();
+                    btnRegister.setEnabled(true);
+                });
+                return;
+            }
+
+            // ── 3. Lưu sinh viên mới ──
             Student s = new Student();
             s.name        = name;
             s.studentCode = code;

@@ -21,4 +21,7 @@ public interface ClassRoomDao {
 
     @Query("SELECT COUNT(*) FROM classrooms")
     int count();
+
+    @Query("SELECT * FROM classrooms WHERE id = :id")
+    ClassRoomEntity getById(int id);
 }

@@ -75,5 +75,14 @@
             android:textSize="12sp"
             android:textColor="#5C6BC0"/>
 
+        <TextView
+            android:id="@+id/tvClassSessions"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="📅 1 buổi  🕐 07:30  ⏱ Trễ: 15'"
+            android:textSize="11sp"
+            android:textColor="#7986CB"/>
+
     </LinearLayout>
 </androidx.cardview.widget.CardView>

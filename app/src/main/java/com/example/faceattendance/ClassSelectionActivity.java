@@ -8,6 +8,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -59,6 +60,12 @@ public class ClassSelectionActivity extends AppCompatActivity {
         loadClasses();
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        loadClasses();
+    }
+
     // ---------------------------------------------------------------
     // Load từ Room DB
     // ---------------------------------------------------------------
@@ -81,40 +88,73 @@ public class ClassSelectionActivity extends AppCompatActivity {
         View dialogView = LayoutInflater.from(this)
                 .inflate(R.layout.dialog_add_class, null);
 
-        EditText etName  = dialogView.findViewById(R.id.etClassName);
-        EditText etCode  = dialogView.findViewById(R.id.etClassCode);
-        EditText etRoom  = dialogView.findViewById(R.id.etClassRoom);
-        EditText etTime  = dialogView.findViewById(R.id.etClassTime);
-        EditText etTotal = dialogView.findViewById(R.id.etClassTotal);
+        EditText   etName         = dialogView.findViewById(R.id.etClassName);
+        EditText   etCode         = dialogView.findViewById(R.id.etClassCode);
+        EditText   etRoom         = dialogView.findViewById(R.id.etClassRoom);
+        EditText   etTotal        = dialogView.findViewById(R.id.etClassTotal);
+        RadioGroup rgSessions     = dialogView.findViewById(R.id.rgSessions);
+        EditText   etStartTime    = dialogView.findViewById(R.id.etStartTime);
+        EditText   etGraceMinutes = dialogView.findViewById(R.id.etGraceMinutes);
 
         new AlertDialog.Builder(this)
                 .setTitle("➕  Thêm lớp học")
                 .setView(dialogView)
                 .setPositiveButton("Thêm", (dialog, which) -> {
-                    String name  = etName.getText().toString().trim();
-                    String code  = etCode.getText().toString().trim();
-                    String room  = etRoom.getText().toString().trim();
-                    String time  = etTime.getText().toString().trim();
-                    String total = etTotal.getText().toString().trim();
+                    String name      = etName.getText().toString().trim();
+                    String code      = etCode.getText().toString().trim();
+                    String room      = etRoom.getText().toString().trim();
+                    String totalStr  = etTotal.getText().toString().trim();
+                    String startTime = etStartTime.getText().toString().trim();
+                    String graceStr  = etGraceMinutes.getText().toString().trim();
 
-                    if (TextUtils.isEmpty(name) || TextUtils.isEmpty(code) || TextUtils.isEmpty(room)) {
-                        Toast.makeText(this, "Vui lòng nhập đủ tên lớp, mã lớp và phòng học!", Toast.LENGTH_SHORT).show();
+                    // Validate bắt buộc
+                    if (TextUtils.isEmpty(name)) {
+                        Toast.makeText(this, "Vui lòng nhập tên lớp!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (TextUtils.isEmpty(code)) {
+                        Toast.makeText(this, "Vui lòng nhập mã lớp!", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    if (TextUtils.isEmpty(room)) {
+                        Toast.makeText(this, "Vui lòng nhập phòng học!", Toast.LENGTH_SHORT).show();
                         return;
                     }
 
+                    // Số buổi
+                    int sessions = (rgSessions.getCheckedRadioButtonId() == R.id.rb2Sessions) ? 2 : 1;
+
+                    // Phút trễ
+                    int graceMinutes = 15;
+                    if (!graceStr.isEmpty()) {
+                        try { graceMinutes = Integer.parseInt(graceStr); }
+                        catch (NumberFormatException ignored) {}
+                    }
+
+                    // Chuỗi hiển thị trên card
+                    String timeDisplay = "";
+                    if (!startTime.isEmpty()) {
+                        timeDisplay = startTime + (sessions == 2 ? "  (2 buổi)" : "  (1 buổi)");
+                    } else {
+                        timeDisplay = sessions + " buổi";
+                    }
+
                     ClassRoomEntity cls = new ClassRoomEntity();
-                    cls.name      = name;
-                    cls.code      = code;
-                    cls.room      = room;
-                    cls.time      = time.isEmpty() ? "—" : time;
-                    cls.total     = total.isEmpty() ? 0 : Integer.parseInt(total);
-                    cls.createdAt = System.currentTimeMillis();
+                    cls.name         = name;
+                    cls.code         = code;
+                    cls.room         = room;
+                    cls.time         = timeDisplay;
+                    cls.total        = totalStr.isEmpty() ? 0 : Integer.parseInt(totalStr);
+                    cls.sessions     = sessions;
+                    cls.startTime    = startTime;
+                    cls.graceMinutes = graceMinutes;
+                    cls.createdAt    = System.currentTimeMillis();
 
                     new Thread(() -> {
                         AppDatabase.getInstance(this).classRoomDao().insert(cls);
                         runOnUiThread(() -> {
-                            Toast.makeText(this, "Đã thêm lớp " + name, Toast.LENGTH_SHORT).show();
-                            loadClasses(); // Reload lại danh sách
+                            Toast.makeText(this, "✅ Đã thêm lớp " + name, Toast.LENGTH_SHORT).show();
+                            loadClasses();
                         });
                     }).start();
                 })
@@ -201,6 +241,15 @@ public class ClassSelectionActivity extends AppCompatActivity {
                         .show();
                 return true;
             });
+            TextView tvSessions = h.itemView.findViewById(R.id.tvClassSessions);
+            String info = "📅 " + cls.sessions + " buổi";
+            if (cls.startTime != null && !cls.startTime.isEmpty()) {
+                info += "  🕐 " + cls.startTime;
+            }
+            if (cls.graceMinutes > 0) {
+                info += "  ⏱ Trễ: " + cls.graceMinutes + "'";
+            }
+            tvSessions.setText(info);
         }
 
         @Override

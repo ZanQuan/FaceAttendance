@@ -11,7 +11,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase;
 
 @Database(
         entities = {Student.class, Attendance.class, ClassRoomEntity.class, Teacher.class},
-        version = 6,          // ← tăng từ 5 lên 6
+        version = 7,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
@@ -68,6 +68,22 @@ public abstract class AppDatabase extends RoomDatabase {
         }
     };
 
+    // v6 -> v7: lớp học thêm phần học 1 buổi hay 2 buổi (tick chọn)
+    static final Migration MIGRATION_6_7 = new Migration(6, 7) {
+        @Override
+        public void migrate(@NonNull SupportSQLiteDatabase database) {
+            database.execSQL(
+                    "ALTER TABLE classrooms ADD COLUMN sessions INTEGER NOT NULL DEFAULT 1"
+            );
+            database.execSQL(
+                    "ALTER TABLE classrooms ADD COLUMN start_time TEXT NOT NULL DEFAULT ''"
+            );
+            database.execSQL(
+                    "ALTER TABLE classrooms ADD COLUMN grace_minutes INTEGER NOT NULL DEFAULT 15"
+            );
+        }
+    };
+
     public static AppDatabase getInstance(Context context) {
         if (INSTANCE == null) {
             synchronized (AppDatabase.class) {
@@ -82,7 +98,8 @@ public abstract class AppDatabase extends RoomDatabase {
                                     MIGRATION_2_3,
                                     MIGRATION_3_4,
                                     MIGRATION_4_5,
-                                    MIGRATION_5_6   // ← thêm migration mới
+                                    MIGRATION_5_6,
+                                    MIGRATION_6_7
                             )
                             // KHÔNG dùng fallbackToDestructiveMigration nữa
                             // vì đã có đủ migration → dữ liệu cũ không bị xóa

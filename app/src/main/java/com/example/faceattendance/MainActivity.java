@@ -272,8 +272,15 @@ public class MainActivity extends AppCompatActivity {
         for (Student s : students) {
             if (!s.hasEmbedding()) continue;
 
-            float[] stored = s.getFaceEmbedding();
-            float   score  = FaceGeometricHelper.cosineSimilarity(queryEmbedding, stored);
+            float score = FaceGeometricHelper.cosineSimilarity(queryEmbedding, s.getFaceEmbedding());
+
+            float[] emb2 = s.getFaceEmbedding2();
+            if (emb2 != null)
+                score = Math.max(score, FaceGeometricHelper.cosineSimilarity(queryEmbedding, emb2));
+
+            float[] emb3 = s.getFaceEmbedding3();
+            if (emb3 != null)
+                score = Math.max(score, FaceGeometricHelper.cosineSimilarity(queryEmbedding, emb3));
             Log.d(TAG, "So sánh với " + s.name + ": " + String.format("%.4f", score));
 
             if (score > bestScore) {
@@ -305,7 +312,7 @@ public class MainActivity extends AppCompatActivity {
         // Kiểm tra đã điểm danh hôm nay chưa
         String today = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
         for (Attendance existing : db.attendanceDao().getByDate(today)) {
-            if (existing.studentId == matched.id) {
+            if (existing.studentId == matched.id && existing.classId == currentClassId) {
                 runOnUiThread(() -> {
                     Toast.makeText(this,
                             matched.name + " đã điểm danh hôm nay!", Toast.LENGTH_SHORT).show();
@@ -320,6 +327,7 @@ public class MainActivity extends AppCompatActivity {
         a.studentId   = matched.id;
         a.studentName = matched.name;
         a.studentCode = matched.studentCode;
+        a.classId     = currentClassId;
         a.timestamp   = System.currentTimeMillis();
         a.date        = today;
         a.time        = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());

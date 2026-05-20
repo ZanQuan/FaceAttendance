@@ -1,103 +1,178 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout
+<ScrollView
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:padding="20dp">
+    android:layout_height="wrap_content">
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Tên lớp *"
-        android:textSize="13sp"
-        android:textColor="#5C6BC0"
-        android:layout_marginBottom="4dp"/>
-
-    <EditText
-        android:id="@+id/etClassName"
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:hint="VD: CNTT K21"
-        android:inputType="text"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:background="@drawable/bg_input_field"/>
-
-    <TextView
-        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Mã lớp *"
-        android:textSize="13sp"
-        android:textColor="#5C6BC0"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="4dp"/>
+        android:orientation="vertical"
+        android:padding="20dp">
 
-    <EditText
-        android:id="@+id/etClassCode"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:hint="VD: CNTT01"
-        android:inputType="text"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:background="@drawable/bg_input_field"/>
+        <!-- Tên lớp -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tên lớp *"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginBottom="4dp"/>
+        <EditText
+            android:id="@+id/etClassName"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="VD: CNTT K21"
+            android:inputType="text"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_input_field"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Phòng học *"
-        android:textSize="13sp"
-        android:textColor="#5C6BC0"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="4dp"/>
+        <!-- Mã lớp -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mã lớp *"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"/>
+        <EditText
+            android:id="@+id/etClassCode"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="VD: CNTT01"
+            android:inputType="text"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_input_field"/>
 
-    <EditText
-        android:id="@+id/etClassRoom"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:hint="VD: H22"
-        android:inputType="text"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:background="@drawable/bg_input_field"/>
+        <!-- Phòng học -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Phòng học *"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"/>
+        <EditText
+            android:id="@+id/etClassRoom"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="VD: H22"
+            android:inputType="text"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_input_field"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Thời gian học"
-        android:textSize="13sp"
-        android:textColor="#5C6BC0"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="4dp"/>
+        <!-- Sĩ số -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Sĩ số"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"/>
+        <EditText
+            android:id="@+id/etClassTotal"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="VD: 40"
+            android:inputType="number"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_input_field"/>
 
-    <EditText
-        android:id="@+id/etClassTime"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:hint="VD: Thứ 2  7:00–9:00"
-        android:inputType="text"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:background="@drawable/bg_input_field"/>
+        <!-- ═══════════════════════════════════════ -->
+        <!--          SỐ BUỔI HỌC (MỚI)            -->
+        <!-- ═══════════════════════════════════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Số buổi học *"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginTop="16dp"
+            android:layout_marginBottom="8dp"/>
 
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Sĩ số"
-        android:textSize="13sp"
-        android:textColor="#5C6BC0"
-        android:layout_marginTop="12dp"
-        android:layout_marginBottom="4dp"/>
+        <RadioGroup
+            android:id="@+id/rgSessions"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-    <EditText
-        android:id="@+id/etClassTotal"
-        android:layout_width="match_parent"
-        android:layout_height="48dp"
-        android:hint="VD: 40"
-        android:inputType="number"
-        android:paddingStart="12dp"
-        android:paddingEnd="12dp"
-        android:background="@drawable/bg_input_field"/>
+            <RadioButton
+                android:id="@+id/rb1Session"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:text="  📖 1 buổi"
+                android:textColor="#1A237E"
+                android:textSize="14sp"
+                android:checked="true"
+                android:button="@null"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_input_field"/>
 
-</LinearLayout>
+            <RadioButton
+                android:id="@+id/rb2Sessions"
+                android:layout_width="0dp"
+                android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="10dp"
+                android:text="  📚 2 buổi"
+                android:textColor="#1A237E"
+                android:textSize="14sp"
+                android:button="@null"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_input_field"/>
+        </RadioGroup>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--         GIỜ BẮT ĐẦU (MỚI)             -->
+        <!-- ═══════════════════════════════════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Giờ bắt đầu"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"/>
+        <EditText
+            android:id="@+id/etStartTime"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="VD: 07:00"
+            android:inputType="time"
+            android:maxLength="5"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_input_field"/>
+
+        <!-- ═══════════════════════════════════════ -->
+        <!--      PHÚT TRỄ CHẤP NHẬN (MỚI)         -->
+        <!-- ═══════════════════════════════════════ -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cho phép trễ tối đa (phút)"
+            android:textSize="13sp"
+            android:textColor="#5C6BC0"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="4dp"/>
+        <EditText
+            android:id="@+id/etGraceMinutes"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:hint="Mặc định: 15 phút"
+            android:inputType="number"
+            android:text="15"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:background="@drawable/bg_input_field"/>
+
+    </LinearLayout>
+</ScrollView>
