@@ -58,7 +58,9 @@ public class ClassSelectionActivity extends AppCompatActivity {
         // FAB thêm lớp
         FloatingActionButton fab = findViewById(R.id.fabAddClass);
         fab.setOnClickListener(v -> showAddClassDialog());
-
+        findViewById(R.id.btnReport).setOnClickListener(v ->
+                startActivity(new Intent(this, ReportActivity.class))
+        );
         // Load danh sách lớp từ DB
         loadClasses();
     }

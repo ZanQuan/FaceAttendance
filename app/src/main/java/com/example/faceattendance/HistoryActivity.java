@@ -1,4 +1,5 @@
 package com.example.faceattendance;
+
 import android.os.Bundle;
 import android.view.View;
 import android.widget.LinearLayout;
@@ -17,17 +18,25 @@ import java.util.List;
 
 public class HistoryActivity extends AppCompatActivity {
 
-    private RecyclerView recyclerHistory;
-    private LinearLayout layoutEmpty;
-    private TextView tvTotalCount;
-    private MaterialButton btnClearAll;
-
+    private RecyclerView    recyclerHistory;
+    private LinearLayout    layoutEmpty;
+    private TextView        tvTotalCount;
+    private MaterialButton  btnClearAll;
     private AttendanceAdapter adapter;
+
+    // ── Nhận từ Intent ──
+    private int    classId   = 0;
+    private String className = "Tất cả";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_history);
+
+        // Lấy classId và className từ Intent (nếu có)
+        classId   = getIntent().getIntExtra("classId", 0);
+        String name = getIntent().getStringExtra("className");
+        if (name != null) className = name;
 
         recyclerHistory = findViewById(R.id.recyclerHistory);
         layoutEmpty     = findViewById(R.id.layoutEmpty);
@@ -35,7 +44,6 @@ public class HistoryActivity extends AppCompatActivity {
         btnClearAll     = findViewById(R.id.btnClearAll);
 
         recyclerHistory.setLayoutManager(new LinearLayoutManager(this));
-
         btnClearAll.setOnClickListener(v -> confirmClearAll());
 
         loadData();
@@ -43,8 +51,19 @@ public class HistoryActivity extends AppCompatActivity {
 
     private void loadData() {
         new Thread(() -> {
-            List<Attendance> list = AppDatabase.getInstance(this)
-                    .attendanceDao().getAll();
+            AppDatabase db = AppDatabase.getInstance(this);
+
+            // ── Lọc theo lớp nếu có classId ──
+            List<Attendance> list = (classId > 0)
+                    ? db.attendanceDao().getByClassId(classId)
+                    : db.attendanceDao().getAll();
+
+            // Đếm số người trễ
+            int lateCount = 0;
+            for (Attendance a : list) {
+                if (a.lateMinutes > 0) lateCount++;
+            }
+            final int finalLate = lateCount;
 
             runOnUiThread(() -> {
                 if (list.isEmpty()) {
@@ -54,7 +73,11 @@ public class HistoryActivity extends AppCompatActivity {
                 } else {
                     recyclerHistory.setVisibility(View.VISIBLE);
                     layoutEmpty.setVisibility(View.GONE);
-                    tvTotalCount.setText(list.size() + " bản ghi");
+
+                    String countText = list.size() + " bản ghi";
+                    if (finalLate > 0)
+                        countText += "   ⚠️ " + finalLate + " người trễ";
+                    tvTotalCount.setText(countText);
 
                     adapter = new AttendanceAdapter(list);
                     recyclerHistory.setAdapter(adapter);
@@ -65,11 +88,17 @@ public class HistoryActivity extends AppCompatActivity {
 
     private void confirmClearAll() {
         new AlertDialog.Builder(this)
-                .setTitle("Xóa tất cả lịch sử?")
-                .setMessage("Thao tác này không thể hoàn tác.")
+                .setTitle("Xóa lịch sử?")
+                .setMessage(classId > 0
+                        ? "Xóa toàn bộ lịch sử lớp \"" + className + "\"?"
+                        : "Xóa toàn bộ lịch sử tất cả lớp?")
                 .setPositiveButton("Xóa", (d, w) -> {
                     new Thread(() -> {
-                        AppDatabase.getInstance(this).attendanceDao().deleteAll();
+                        AppDatabase db = AppDatabase.getInstance(this);
+                        if (classId > 0)
+                            db.attendanceDao().deleteByClassId(classId);
+                        else
+                            db.attendanceDao().deleteAll();
                         runOnUiThread(this::loadData);
                     }).start();
                 })
@@ -77,8 +106,3 @@ public class HistoryActivity extends AppCompatActivity {
                 .show();
     }
 }
-
-
-// ══════════════════════════════════════════════════════════════
-//  AttendanceAdapter.java
-// ══════════════════════════════════════════════════════════════

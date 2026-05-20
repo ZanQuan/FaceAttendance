@@ -3,8 +3,10 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:background="#000000">
 
+    <!-- Camera preview -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="0dp"
@@ -14,6 +16,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
+    <!-- Bounding box overlay -->
     <com.example.faceattendance.camera.FaceOverlayView
         android:id="@+id/faceOverlay"
         android:layout_width="0dp"
@@ -23,69 +26,91 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
+    <!-- Trạng thái nhận diện -->
     <TextView
         android:id="@+id/tvStatus"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Chưa phát hiện khuôn mặt"
         android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:background="#88000000"
-        android:padding="8dp"
+        android:textSize="14sp"
+        android:background="#AA000000"
+        android:padding="10dp"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_margin="12dp"/>
+        app:layout_constraintEnd_toEndOf="parent"/>
 
+    <!-- Thanh nút phía dưới -->
     <LinearLayout
         android:id="@+id/layoutBottom"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center"
+        android:orientation="vertical"
+        android:background="#1A237E"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="14dp"
         app:layout_constraintBottom_toBottomOf="parent">
 
-        <Button
+        <!-- Hàng 1: Nút Điểm danh lớn -->
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAttend"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:text="Điểm danh"
-            android:textSize="16sp"/>
+            android:text="📷  ĐIỂM DANH"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05"
+            app:backgroundTint="#E53935"
+            app:cornerRadius="12dp"
+            android:layout_marginBottom="8dp"/>
 
-        <Button
-            android:id="@+id/btnRegister"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp"
-            android:text="Đăng ký SV"
-            android:textSize="16sp"/>
-
-        <Button
-            android:id="@+id/btnHistory"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="Lịch sử"
-            android:textSize="16sp"/>
-
-        <Button
-            android:id="@+id/btnStudents"
-            android:layout_width="0dp"
-            android:layout_height="52dp"
-            android:layout_weight="1"
-            android:text="SV"
-            android:textSize="13sp"/>
-
-        <Button
-            android:id="@+id/btnReport"
-            android:layout_width="wrap_content"
+        <!-- Hàng 2: 3 nút nhỏ -->
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="📊 Báo cáo"
-            android:backgroundTint="#E53935"/>
+            android:orientation="horizontal">
 
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnRegister"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="5dp"
+                android:text="➕Đăng ký SV"
+                android:textSize="12sp"
+                app:backgroundTint="#283593"
+                app:cornerRadius="10dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#5C6BC0"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnHistory"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:layout_marginEnd="5dp"
+                android:text="📋Lịch sử"
+                android:textSize="12sp"
+                app:backgroundTint="#283593"
+                app:cornerRadius="10dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#5C6BC0"/>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStudents"
+                android:layout_width="0dp"
+                android:layout_height="50dp"
+                android:layout_weight="1"
+                android:text="👥DS Sinh viên"
+                android:textSize="12sp"
+                app:backgroundTint="#283593"
+                app:cornerRadius="10dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="#5C6BC0"/>
+
+        </LinearLayout>
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

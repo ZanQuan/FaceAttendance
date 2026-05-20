@@ -108,13 +108,13 @@
                 android:layout_width="0dp"
                 android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="  📖 1 buổi"
-                android:textColor="#1A237E"
+                android:text="📖 1 buổi/tuần"
+                android:textColor="@drawable/selector_radio_text"
                 android:textSize="14sp"
                 android:checked="true"
                 android:button="@null"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_input_field"/>
+                android:gravity="center"
+                android:background="@drawable/selector_radio_bg"/>
 
             <RadioButton
                 android:id="@+id/rb2Sessions"
@@ -122,12 +122,12 @@
                 android:layout_height="48dp"
                 android:layout_weight="1"
                 android:layout_marginStart="10dp"
-                android:text="  📚 2 buổi"
-                android:textColor="#1A237E"
+                android:text="📚 2 buổi/tuần"
+                android:textColor="@drawable/selector_radio_text"
                 android:textSize="14sp"
                 android:button="@null"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_input_field"/>
+                android:gravity="center"
+                android:background="@drawable/selector_radio_bg"/>
         </RadioGroup>
 
         <!-- GIỜ BẮT ĐẦU - bấm để mở TimePicker -->
