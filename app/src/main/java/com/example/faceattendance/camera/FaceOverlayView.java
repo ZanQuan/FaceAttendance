@@ -1,80 +1,76 @@
 package com.example.faceattendance.camera;
 
 import android.content.Context;
-import android.graphics.*;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Rect;
 import android.util.AttributeSet;
 import android.view.View;
+
+import androidx.annotation.Nullable;
+
 import com.google.mlkit.vision.face.Face;
+
+import java.util.ArrayList;
 import java.util.List;
 
 public class FaceOverlayView extends View {
-    private List<Face> faces;
-    private int imageWidth  = 1;
-    private int imageHeight = 1;
-    private boolean isFrontCamera = true; // mặc định camera trước
-    private Paint boxPaint;
-    private Paint textPaint;
 
-    public FaceOverlayView(Context ctx, AttributeSet attrs) {
-        super(ctx, attrs);
-        boxPaint = new Paint();
+    private final Paint boxPaint = new Paint();
+
+    // danh sách khuôn mặt hiện tại
+    private List<Face> faces = new ArrayList<>();
+
+    private int imageWidth = 0;
+    private int imageHeight = 0;
+
+    public FaceOverlayView(Context context, @Nullable AttributeSet attrs) {
+        super(context, attrs);
+
         boxPaint.setColor(Color.GREEN);
         boxPaint.setStyle(Paint.Style.STROKE);
-        boxPaint.setStrokeWidth(5f);
-
-        textPaint = new Paint();
-        textPaint.setColor(Color.GREEN);
-        textPaint.setTextSize(40f);
-        textPaint.setStyle(Paint.Style.FILL);
+        boxPaint.setStrokeWidth(6f);
     }
 
-    /** Gọi từ Activity để báo camera trước (true) hay sau (false) */
-    public void setFrontCamera(boolean frontCamera) {
-        this.isFrontCamera = frontCamera;
-    }
+    public void setFaces(List<Face> faces, int width, int height) {
 
-    public void setFaces(List<Face> faceList, int imgW, int imgH) {
-        this.faces       = faceList;
-        this.imageWidth  = imgW;
-        this.imageHeight = imgH;
+        this.faces = faces;
+        this.imageWidth = width;
+        this.imageHeight = height;
+
         invalidate();
     }
 
-    public void setFaces(List<Face> faceList) {
-        setFaces(faceList, imageWidth, imageHeight);
+    // FIX: reset overlay sau mỗi lần điểm danh
+    public void clearFaces() {
+
+        faces.clear();
+
+        invalidate();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (faces == null || faces.isEmpty()) return;
 
-        float scaleX = (float) getWidth()  / imageWidth;
-        float scaleY = (float) getHeight() / imageHeight;
+        if (faces == null || faces.isEmpty()) {
+            return;
+        }
 
-        for (int i = 0; i < faces.size(); i++) {
-            Face face = faces.get(i);
-            RectF box = new RectF(face.getBoundingBox());
+        float scaleX = getWidth() / (float) imageWidth;
+        float scaleY = getHeight() / (float) imageHeight;
 
-            // Scale tọa độ theo kích thước view
-            box.left   *= scaleX;
-            box.right  *= scaleX;
-            box.top    *= scaleY;
-            box.bottom *= scaleY;
+        for (Face face : faces) {
 
-            // Camera trước: PreviewView tự mirror ảnh ngang,
-            // nhưng ML Kit trả tọa độ gốc chưa mirror
-            // → lật X để hộp khớp với mặt hiển thị
-            if (isFrontCamera) {
-                float mirroredLeft  = getWidth() - box.right;
-                float mirroredRight = getWidth() - box.left;
-                box.left  = mirroredLeft;
-                box.right = mirroredRight;
-            }
+            Rect box = face.getBoundingBox();
 
-            canvas.drawRect(box, boxPaint);
-            canvas.drawText("Mặt " + (i + 1),
-                    box.left + 8, box.top - 10, textPaint);
+            float left   = box.left * scaleX;
+            float top    = box.top * scaleY;
+            float right  = box.right * scaleX;
+            float bottom = box.bottom * scaleY;
+
+            canvas.drawRect(left, top, right, bottom, boxPaint);
         }
     }
 }

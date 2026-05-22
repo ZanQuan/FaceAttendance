@@ -166,7 +166,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="Demo: giaovien / 123456"
+
             android:textSize="12sp"
             android:textColor="#9E9E9E"
             android:gravity="center"/>

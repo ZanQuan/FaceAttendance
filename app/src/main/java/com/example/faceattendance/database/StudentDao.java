@@ -27,6 +27,8 @@ public interface StudentDao {
 
     @Query("SELECT * FROM students WHERE studentCode = :code")
     Student getByCode(String code);
+    @Query("SELECT * FROM students WHERE studentCode = :code AND classId = :classId LIMIT 1")
+    Student getByCodeAndClass(String code, int classId);
 
     @Query("SELECT COUNT(*) FROM students")
     int getCount();

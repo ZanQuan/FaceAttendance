@@ -312,7 +312,7 @@ public class RegisterActivity extends AppCompatActivity {
      *   - Vẫn bị trùng nhầm  → tăng lên 0.995f
      *   - Không bắt được cùng người đăng ký lại → giảm xuống 0.970f
      */
-    private static final float DUPLICATE_THRESHOLD = 0.960f;
+    private static final float DUPLICATE_THRESHOLD = 0.985f;
 
     private void saveStudent() {
         String name = getText(etName);
@@ -324,7 +324,7 @@ public class RegisterActivity extends AppCompatActivity {
             AppDatabase db = AppDatabase.getInstance(this);
 
             // ── 1. Kiểm tra trùng MSSV ──
-            if (db.studentDao().getByCode(code) != null) {
+            if (db.studentDao().getByCodeAndClass(code, classId) != null) {
                 runOnUiThread(() -> {
                     Toast.makeText(this, "MSSV đã tồn tại!", Toast.LENGTH_SHORT).show();
                     btnRegister.setEnabled(true);
@@ -339,60 +339,140 @@ public class RegisterActivity extends AppCompatActivity {
             //   - Logic OR (cũ): 1/9 cặp vượt ngưỡng → block → quá nhiều false positive
             //   - Logic AVG (mới): phải có similarity TRUNG BÌNH cao → chắc chắn hơn
             //
-            List<Student> allStudents = db.studentDao().getAll();
-            Student dupStudent = null;
-            float   dupScore   = 0f;
+            List<Student> allStudents =
+                    db.studentDao().getByClassId(classId);
 
-            float[][] newEmbs = { embedding1, embedding2, embedding3 };
+            Student dupStudent = null;
+
+            float bestDupScore = 0f;
+            float secondBestScore = 0f;
+
+            float[][] newEmbs = {
+                    embedding1,
+                    embedding2,
+                    embedding3
+            };
 
             for (Student existing : allStudents) {
+
                 float[][] storedEmbs = {
                         existing.getFaceEmbedding(),
                         existing.getFaceEmbedding2(),
                         existing.getFaceEmbedding3()
                 };
 
-                // Tính điểm trung bình của tất cả cặp hợp lệ
                 float totalScore = 0f;
-                int   pairCount  = 0;
+                int pairCount = 0;
+
+                float maxScore = 0f;
+                int strongMatchCount = 0;
 
                 for (float[] newEmb : newEmbs) {
+
                     if (newEmb == null) continue;
+
                     for (float[] storedEmb : storedEmbs) {
+
                         if (storedEmb == null) continue;
-                        float score = FaceGeometricHelper.cosineSimilarity(newEmb, storedEmb);
+
+                        float score =
+                                FaceGeometricHelper.cosineSimilarity(
+                                        newEmb,
+                                        storedEmb
+                                );
+
                         totalScore += score;
                         pairCount++;
+
+                        if (score > maxScore) {
+                            maxScore = score;
+                        }
+
+                        // chỉ tính strong nếu cực giống
+                        if (score >= 0.995f) {
+                            strongMatchCount++;
+                        }
                     }
                 }
 
                 if (pairCount == 0) continue;
+
                 float avgScore = totalScore / pairCount;
 
-                Log.d(TAG, "DupCheck vs " + existing.name
-                        + ": avg=" + String.format("%.4f", avgScore)
-                        + " (" + pairCount + " pairs)");
+                Log.d(TAG,
+                        "DupCheck vs " + existing.name +
+                                " | avg=" + String.format("%.4f", avgScore) +
+                                " | max=" + String.format("%.4f", maxScore) +
+                                " | strong=" + strongMatchCount);
 
-                if (avgScore > dupScore) dupScore = avgScore;
+                // lưu top1 và top2
+                if (avgScore > bestDupScore) {
 
-                if (avgScore >= DUPLICATE_THRESHOLD) {
+                    secondBestScore = bestDupScore;
+
+                    bestDupScore = avgScore;
+                }
+                else if (avgScore > secondBestScore) {
+
+                    secondBestScore = avgScore;
+                }
+
+                /*
+                 * Điều kiện duplicate MỚI
+                 *
+                 * 1. average phải rất cao
+                 * 2. max phải cực cao
+                 * 3. có ít nhất 2 cặp cực giống
+                 * 4. phải vượt người thứ 2 đủ xa
+                 */
+
+                float gap = avgScore - secondBestScore;
+
+                boolean isDuplicate =
+
+                        avgScore >= 0.985f
+
+                                && maxScore >= 0.995f
+
+                                && strongMatchCount >= 2
+
+                                && gap >= 0.003f;
+
+                if (isDuplicate) {
+
                     dupStudent = existing;
+
+                    bestDupScore = avgScore;
+
                     break;
                 }
             }
 
             if (dupStudent != null) {
-                final Student dup   = dupStudent;
-                final float   score = dupScore;
+
+                final Student dup = dupStudent;
+                final float score = bestDupScore;
+
                 runOnUiThread(() -> {
-                    Toast.makeText(this,
-                            String.format("❌ Khuôn mặt đã được đăng ký!\nTrùng với: %s (%s)\nĐộ tương đồng TB: %.1f%%",
-                                    dup.name, dup.studentCode, score * 100),
-                            Toast.LENGTH_LONG).show();
+
+                    Toast.makeText(
+                            this,
+                            String.format(
+                                    "❌ Khuôn mặt đã được đăng ký!\n\nTrùng với:\n%s (%s)\n\nĐộ giống: %.2f%%",
+                                    dup.name,
+                                    dup.studentCode,
+                                    score * 100
+                            ),
+                            Toast.LENGTH_LONG
+                    ).show();
+
                     btnRegister.setEnabled(true);
                 });
+
                 return;
             }
+
+
 
             // ── 3. Lưu sinh viên mới ──
             Student s = new Student();
